@@ -2,6 +2,7 @@ import socket
 import urllib2
 
 from healthcheck import HealthCheck
+from util import report
 
 class TcpCheck(HealthCheck):
   """ A health check which tries to connect to a port via TCP. """
