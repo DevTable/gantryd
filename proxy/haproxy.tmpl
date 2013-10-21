@@ -1,0 +1,39 @@
+global
+    daemon
+    maxconn 4096
+    user haproxy
+    group haproxy
+    quiet
+    nbproc 1
+    pidfile /var/run/haproxy-private.pid
+    log 127.0.0.1 local1 notice
+    stats socket /var/run/haproxy.sock mode 0600 level admin
+
+defaults
+    option abortonclose
+    
+    log global
+{% for port, route in port_routes.items() %}
+frontend port_{{ port }} *:{{ port }}
+    timeout client 86400000
+    {% if route.is_http -%}
+    mode http
+    {%- else -%}
+    mode tcp
+    {%- endif %}
+
+    default_backend {{ route.id }}-backend
+{% endfor %}
+
+{%- for route in port_routes.values() -%}
+backend {{ route.id }}-backend
+    {%- if route.is_http %}
+    mode http
+    {%- else %}
+    mode tcp
+    {%- endif %}
+    balance roundrobin
+    timeout server 86400000
+    timeout connect 5000
+    server {{ route.id }}-backend-0 {{ route.container_ip }}:{{ route.container_port }}
+{%- endfor -%}
