@@ -34,7 +34,7 @@ Installation instructions can be found at [Etcd README][etcd-readme].
 git clone https://github.com/DevTable/gantryd.git
 ```
 
-### Installation dependencies
+### Installing dependencies
 
 ```sh
 # Install apt-get dependencies.
