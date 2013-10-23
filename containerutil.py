@@ -3,7 +3,6 @@ def getLocalPort(client, container, container_port):
   try:
     return client.port(container, container_port)
   except Exception as e:
-    print e
     return 0
 
 def getLocalPorts(container):

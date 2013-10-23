@@ -110,7 +110,7 @@ class GantryDClient(object):
  
     # Register a handler to remove this machine from the list when the daemon is
     # shutdown. The controller will also occasionally ping a machine to verify it
-    # is prevent.
+    # is present.
     atexit.register(self.handleExit)
     
     # Start the thread to register this machine as being part of the project.
