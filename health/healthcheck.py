@@ -14,5 +14,4 @@ class HealthCheck(object):
     try:
       return client.port(container, container_port)
     except Exception as e:
-      print e
       return 0

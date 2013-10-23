@@ -7,11 +7,10 @@ HEALTH_CHECKS = {
   'http': HttpRequestCheck
 }
 
-def runHealthCheck(check_config, container, report):
-  """ Runs the health check (as specified by the given config) over the given container. """
+def buildHealthCheck(check_config):
+  """ Builds a health check to run and returns it. """
   kind = check_config.kind
   if not kind in HEALTH_CHECKS:
     fail('Unknown health check: ' + kind)
   
-  instance = HEALTH_CHECKS[kind](check_config)
-  return instance.run(container, report)
+  return HEALTH_CHECKS[kind](check_config)

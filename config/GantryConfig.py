@@ -34,7 +34,8 @@ class _Component(CFObject):
   name = CFField('name')
   repo = CFField('repo')
   tag = CFField('tag').default('latest')
-  command = CFField('command').list_of(str)
+  command = CFField('command').list_of(str).default([])
+  user = CFField('user').default('')
   ports = CFField('ports').list_of(_PortMapping)
   ready_checks = CFField('readyChecks').list_of(_ReadyCheck)
   ready_timeout = CFField('readyTimeout').kind(int).default(10000)
@@ -46,8 +47,18 @@ class _Component(CFObject):
     """ Returns the full image ID for this component, of the form 'repo:tag' """
     return self.repo + ':' + self.tag
     
+  def getUser(self):
+    """ Returns the user under which to run the container or None if none. """
+    if not self.user:
+      return None
+      
+    return self.user
+    
   def getCommand(self):
-    """ Returns the command string to run on component startup. """
+    """ Returns the command string to run on component startup or None if none. """
+    if not self.command:
+      return None
+      
     return ' '.join(self.command)
   
   def getContainerPorts(self):

@@ -20,6 +20,10 @@ class CFObject(object):
     # The "extra" fields on the object, if any.
     self.extra_fields = {}
   
+  def hasExtraField(self, name):
+    """ Returns true if there is an 'extra' field with the given name. """
+    return name in self.extra_fields
+  
   def getExtraField(self, name):
     """ Returns the 'extra' field with this name. """
     return self.extra_fields[name]

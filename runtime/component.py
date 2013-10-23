@@ -2,7 +2,7 @@ from threading import Thread, Event
 from uuid import uuid4
 from cStringIO import StringIO
 
-from health.checks import runHealthCheck
+from health.checks import buildHealthCheck
 from metadata import getContainerStatus, setContainerStatus, removeContainerMetadata, getContainerComponent, setContainerComponent
 from util import report, fail, getDockerClient
 
@@ -163,6 +163,10 @@ class Component(object):
     
   def healthCheck(self, container):
     """ Thread which performs health check(s) on a container. """
+    checks = []
+    for check in self.config.ready_checks:
+      checks.append((check, buildHealthCheck(check)))
+    
     start = time.time()
     while True:
       now = time.time()
@@ -172,12 +176,12 @@ class Component(object):
       
       # Try each check. If any fail, we'll sleep and try again.
       check_failed = None
-      for check in self.config.ready_checks:
-        report('Running health check: ' + check.getTitle())
-        result = runHealthCheck(check, container, report)
+      for (config, check) in checks:
+        report('Running health check: ' + config.getTitle())
+        result = check.run(container, report)
         if not result:
           report('Health check failed')
-          check_failed = check
+          check_failed = config
           break
       
       if check_failed:
@@ -199,11 +203,30 @@ class Component(object):
       
   def createContainer(self, client):
     """ Creates a docker container for this component and returns it. """
-    container = client.create_container(self.config.getFullImage(), self.config.getCommand(),
-      ports = [str(p) for p in self.config.getContainerPorts()])
+    command = self.getCommand()
+    if not command:
+      fail('No command defined in either gantry config or docker image for component ' + self.getName())
+    
+    container = client.create_container(self.config.getFullImage(), command,
+      user = self.config.getUser(), ports = [str(p) for p in self.config.getContainerPorts()])
       
     return container
+  
+  def getCommand(self):    
+    """ Returns the command to run or None if none found. """
+    config_command = self.config.getCommand()
+    if config_command:
+      return config_command
+
+    client = getDockerClient()
+    named_image = self.config.getFullImage()
+    result = client.inspect_image(named_image)
+    container_cfg = result['container_config']
+    if not 'Cmd' in container_cfg:
+      return None
     
+    return ' '.join(container_cfg['Cmd'])
+  
   def ensureImage(self, client):
     """ Ensures that the image for this component is present locally. If not,
         we attempt to pull the image.
