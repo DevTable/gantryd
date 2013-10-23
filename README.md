@@ -17,38 +17,38 @@ multiple machines.
 as it goes along. A container is only shutdown when *all connections* to it have terminated (or it is manually killed). This, combined with progressive
 update, allows for *continuous deployment* by simply pushing a new docker image to a repository and running `update` via `gantryd.py`.
 
-## Progressive rollout and updating
-
-The gantryd update process is extremely useful for careful rollout of updates:
-
-1. A user pushes a new docker image for a repo
-2. A user runs `sudo gantryd.py update myprojectname -c firstcomponent secondcomponent`
-3. Via etcd, the machine(s) running gantryd detect the update
-4. A *single* machine (atomically) marks that it is updating
-5. The machine pulls the updated image, starts the container, verifies it works (via **gantryd** health checks) and updates the local proxy to redirect traffic to that container
-6. All existing containers for that component are marked as *draining* and are automatically shutdown when there are no longer any incoming connections
-7. The machine marks, via etcd, that the update succeeded and the next machine takes up the update
-8. On failure, all machines leave the existing containers for the component running and the status is changed in gantryd to alert about the error
-
 ## Getting Started
 
 ### Getting etcd
 
 The latest etcd release is available as a binary at [Github][github-release].
+Installation instructions can be found at [Etcd README][etcd-readme].
 
 [github-release]: https://github.com/coreos/etcd/releases/
+[etcd-readme]: https://github.com/coreos/etcd/blob/master/README.md
+
 
 ### Cloning the source
 
 ```sh
-git clone https://github.com/devtable/gantryd
+git clone https://github.com/DevTable/gantryd.git
+```
+
+### Installation dependencies
+
+```sh
+# Install apt-get dependencies.
+cat requirements.system | xargs sudo apt-get install
+
+# Install python dependencies.
+pip install -r requirements.txt
 ```
 
 ### Setting up
 
-All settings for gantry are contained in a JSON file named `.gantry`, placed in the same location as the Python source.
+All settings for gantryd are defined in a JSON format. A project's configuration is usually stored in etcd (see `setconfig` below), but can also be stored in a local file.
 
-The `.gantry` file defines the various components of the project you want to manage:
+The configuration defines the various components of the project you want to manage:
 ```json
 {
   "components": [
@@ -68,29 +68,33 @@ The `.gantry` file defines the various components of the project you want to man
 }
 ```
 
-| Field        | Description                                                                     | Default |
-| ------------ | ------------------------------------------------------------------------------- | ------- |
-| name         | The name of the component                                                       |         |
-| repo         | The docker to use for the component's image                                     |         |
-| tag          | The tag of the docker image to use                                              | latest  |
-| command      | The command to run inside the container                                         |         |
-| ports        | Mappings of container ports to external ports                                   |         |
-| readyChecks  | The various checks to run to ensure the container is ready (see below for list) |         |
+| Field        | Description                                                                     | Default    |
+| ------------ | ------------------------------------------------------------------------------- | ---------- |
+| name         | The name of the component                                                       |            |
+| repo         | The docker to use for the component's image                                     |            |
+| tag          | The tag of the docker image to use                                              | latest     |
+| user         | The user under which to run the command in the container                        | (in image) |
+| command      | The command to run inside the container                                         | (in image) |
+| ports        | Mappings of container ports to external ports                                   |            |
+| readyChecks  | The various checks to run to ensure the container is ready (see below for list) |            |
 
 
-## gantryd
+### Terminology
 
-**gantryd** is a distributed tool which uses **etcd** to manage running components on a fleet of machines.
+**Project**: Namespace that contains configuration for a set of components, as well as any metadata associated
+when those components are running. For example: 'frontend', 'backend', 'someproduct'.
+
+**Component**: A named component that runs a specific docker image in a container. For example: 'elasticsearch', 'mongodb'.
 
 ### Setting up a project
 
 #### Creating/updating the project's configuration
 
-To setup a gantryd project, make sure that etcd is running, and a `.gantry` file is ready.
+To setup a gantryd project, make sure that etcd is running, and gantry configuration is avaliable in some file.
 
 Run the following to update the configuration for project `myprojectname` in gantryd:
 ```sh
-sudo ./gantryd.py setconfig myprojectname .gantry
+sudo ./gantryd.py setconfig myprojectname myconfigfile
 ```
 
 Response:
@@ -98,7 +102,7 @@ Response:
 Configuration updated
 ```
 
-#### Marking components as ready
+#### Setup components by 'updating' them
 
 To mark one or more components as ready for deployment, execute the following from a machine with the latest images:
 ```sh
@@ -112,20 +116,27 @@ Component firstcomponent -> 4ae76210a4fe
 Component secondcomponent -> 0cf0c034fc89
 ```
 
-#### Running gantryd on machines
+This sets the status of the components to 'ready' and associates them with the image IDs listed. Once run, any followup
+`gantryd run` commands on this machine (or any other machines in the etcd cluster) will update and start those components
+with those images.
 
-gantryd can be run on any number of machines that share an etcd. To run one (or more) components on a machine, simply run:
+#### Running components on machine(s)
+
+Once components have been marked as ready, they can be run by executing `gantryd run` on one or more machines:
 
 ```sh
 sudo ./gantryd.py run myprojectname -c firstcomponent secondcomponent
 ```
 
-The gantryd process will block and react to all commands for those components in the future.
+This command will start a daemon (and block), starting the components and monitoring them, until it is shutdown.
 
 
-#### Gantryd commands
+### Gantryd commands
 
-##### Updating a component across all listening machines
+#### Updating a component across all listening machines
+
+To tell components to update themselves in response to an image change, execute:
+
 ```sh
 sudo ./gantryd.py update myprojectname -c firstcomponent secondcomponent
 ```
@@ -137,7 +148,9 @@ Component firstcomponent -> 4ae76210a4fe
 Component secondcomponent -> 0cf0c034fc89
 ```
 
-##### Listing the status of all components
+The first machine running the gantryd daemon will start the update within 30 seconds.
+
+### Listing the status of all components
 ```sh
 sudo ./gantryd.py list myprojectname
 ```
@@ -149,7 +162,10 @@ firstcomponent       ready                4ae76210a4fe
 secondcomponent      stopped              0cf0c034fc89
 ```
 
-##### Stopping a component on all machines
+#### Stopping a component on all machines
+
+To tell components to stop themselves on all machines, execute:
+
 ```sh
 sudo ./gantryd.py stop myprojectname -c firstcomponent secondcomponent
 ```
@@ -159,7 +175,12 @@ Response:
 Marking components as stopped
 ```
 
-##### Killing a component on all machines
+All components specified will start the shutdown process within 30 seconds.
+
+#### Killing a component on all machines
+
+To order components to kill themselves immediately on all machines, execute:
+
 ```sh
 sudo ./gantryd.py kill myprojectname -c firstcomponent secondcomponent
 ```
@@ -169,6 +190,9 @@ Response:
 Marking components as killed
 ```
 
+All components specified will be killed within 30 seconds.
+
+
 ### Gantryd health checks
 
 Gantryd supports a number of built-in checks for verifying that a container is properly started and running.
@@ -176,10 +200,10 @@ Gantryd supports a number of built-in checks for verifying that a container is p
 #### http Health Check
 
 ```json
-{ "kind": "http", "port": 8888 }
+{ "kind": "http", "port": 8888, "path": "/somepath" }
 ```
 
-Attempts to connect and download the HTTP page located at the given port. Fails if the HTTP response is not 200.
+Attempts to connect and download the HTTP page located at the given port and path. Fails if the HTTP response is not 2XX. Note that "port" is **optional**.
 
 #### tcp Health Check
 
@@ -192,11 +216,11 @@ Attempts to connect to the given port via TCP. Fails if the connection cannot be
 
 ## gantry
 
-**gantry** is the local version of **gantryd**, intended for starting, stopping and updating of components on a *single* machine.
+**gantry** is the **local** version of gantry, intended for starting, stopping and updating of components on a **single** machine.
 
 ### Listing all containers running on a local machine for a component
 ```sh
-sudo ./gantry.py list firstcomponent
+sudo ./gantry.py myconfigfile list firstcomponent
 ```
 
 Response:
@@ -209,10 +233,10 @@ CONTAINER ID         UPTIME               IMAGE ID             STATUS
 
 ### Performing a *local* update of a component
 
-*Note*: This will occur outside of the gantryd event loop, so this should *only* be used for **single-machine** or **canary** images.
+*Note*: This will occur outside of the gantryd event loop, so this should *only* be used for **single machine** or **canary** images.
 
 ```sh
-sudo ./gantry.py update firstcomponent
+sudo ./gantry.py myconfigfile update firstcomponent
 ```
 
 Response:
@@ -233,7 +257,7 @@ Monitor check started
 *Note*: This will *drain* containers in a safe way, so the process will block until all containers are free from incoming connections
 
 ```sh
-sudo ./gantry.py stop firstcomponent
+sudo ./gantry.py myconfigfile stop firstcomponent
 ```
 
 Response:
@@ -249,7 +273,7 @@ Proxy updated
 
 ### Killing all containers running on a local machine for a component
 ```sh
-sudo ./gantry.py kill firstcomponent
+sudo ./gantry.py myconfigfile kill firstcomponent
 ```
 
 Response:
