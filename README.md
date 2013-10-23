@@ -203,7 +203,9 @@ Gantryd supports a number of built-in checks for verifying that a container is p
 { "kind": "http", "port": 8888, "path": "/somepath" }
 ```
 
-Attempts to connect and download the HTTP page located at the given port and path. Fails if the HTTP response is not 2XX. Note that "port" is **optional**.
+Attempts to connect and download the HTTP page located at the given port and path. Fails if the HTTP response is not 2XX. 
+
+Note that "path" is **optional**.
 
 #### tcp Health Check
 
