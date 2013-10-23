@@ -46,7 +46,7 @@ pip install -r requirements.txt
 
 ### Setting up
 
-All settings for gantryd are defined in a JSON format. A project's configuration is usually stored in etcd (see `setconfig` below), but can also be stored in a local file.
+All settings for gantryd are defined in a JSON format. A project's configuration is stored in etcd but is set initially from a local file (see `setconfig` below).
 
 The configuration defines the various components of the project you want to manage:
 ```json
