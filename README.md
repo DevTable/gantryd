@@ -17,6 +17,8 @@ multiple machines.
 as it goes along. A container is only shutdown when *all connections* to it have terminated (or it is manually killed). This, combined with progressive
 update, allows for *continuous deployment* by simply pushing a new docker image to a repository and running `update` via `gantryd.py`.
 
+**gantryd** also automatically monitors the containers of a component, running checks periodically to ensure they are healthy. If a container goes bad, a new one is automatically started in its place, with traffic being moved over.
+
 ## Getting Started
 
 ### Getting etcd
