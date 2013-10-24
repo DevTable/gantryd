@@ -8,12 +8,12 @@ A framework built on top of [Docker](http://docker.io) that allows for easy depl
 
 ## Overview
 
-**gantryd** is a distributed, etcd-based system for running, updating and managing various Docker images (known as "components") across
+**gantryd** is a distributed, etcd-based system for running, updating, monitoring and managing various Docker images (known as "components") across
 multiple machines.
 
 ![gantryd overview](https://docs.google.com/drawings/d/1S0P8XE9H6lxUZNyQkfAXW9uYfKnXxUrzwA23oihwXlQ/pub?w=596&amp;h=349)
 
-**gantryd** manages the running and draining of containers, automatically updating machines *progressively* on update, and *draining* the old containers
+**gantryd** manages the running, monitoring and draining of containers, automatically updating machines *progressively* on update, and *draining* the old containers
 as it goes along. A container is only shutdown when *all connections* to it have terminated (or it is manually killed). This, combined with progressive
 update, allows for *continuous deployment* by simply pushing a new docker image to a repository and running `update` via `gantryd.py`.
 
@@ -61,22 +61,26 @@ The configuration defines the various components of the project you want to mana
 	         {"external": 8888, "container": 8888}
        ],
        "readyChecks": [
-	         { "kind": "http", "port": 8888 }
+         { "kind": "http", "port": 8888 }
+       ],
+       "healthChecks": [
+         { "kind": "http", "port": 8888, "path": "/some/path" }
        ]
     }
   ]
 }
 ```
 
-| Field        | Description                                                                     | Default    |
-| ------------ | ------------------------------------------------------------------------------- | ---------- |
-| name         | The name of the component                                                       |            |
-| repo         | The docker to use for the component's image                                     |            |
-| tag          | The tag of the docker image to use                                              | latest     |
-| user         | The user under which to run the command in the container                        | (in image) |
-| command      | The command to run inside the container                                         | (in image) |
-| ports        | Mappings of container ports to external ports                                   |            |
-| readyChecks  | The various checks to run to ensure the container is ready (see below for list) |            |
+| Field        | Description                                                                       | Default    |
+| ------------ | --------------------------------------------------------------------------------- | ---------- |
+| name         | The name of the component                                                         |            |
+| repo         | The docker to use for the component's image                                       |            |
+| tag          | The tag of the docker image to use                                                | latest     |
+| user         | The user under which to run the command in the container                          | (in image) |
+| command      | The command to run inside the container                                           | (in image) |
+| ports        | Mappings of container ports to external ports                                     |            |
+| readyChecks  | The various checks to run to ensure the container is ready (see below for list)   |            |
+| healthChecks | The various checks to run to ensure the container is healthy (see below for list) |            |
 
 
 ### Terminology
@@ -195,7 +199,7 @@ All components specified will be killed within 30 seconds.
 
 ### Gantryd health checks
 
-Gantryd supports a number of built-in checks for verifying that a container is properly started and running.
+Gantryd supports a number of built-in checks for verifying that a container is properly started, running and healthy.
 
 #### http Health Check
 
@@ -253,6 +257,8 @@ Updating proxy...
 Starting monitoring...
 Monitor check started
 ```
+
+*Note*: If the `-m` flag is specified, then gantry will remain running and actively monitor the component's container, restarting it automatically if it becomes unhealthy.
 
 ### Stopping all containers running on a local machine for a component
 
