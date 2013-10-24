@@ -123,46 +123,36 @@ class Component(object):
       information.append((container, getContainerStatus(container)))
     
     return information
+    
+  def isHealthy(self):
+    """ Runs the health checks on this component's container, ensuring that it is healthy.
+        Returns True if healthy and False otherwise.
+    """
+    container = self.getPrimaryContainer()
+    if not container:
+      return False
+      
+    checks = []
+    for check in self.config.health_checks:
+      checks.append((check, buildHealthCheck(check)))
 
+    for (config, check) in checks:
+      report('Running health check: ' + config.getTitle())
+      result = check.run(container, report)
+      if not result:
+        return False
+        
+    return True
+    
   ######################################################################
-  
-  def start(self):
-    """ Starts a new instance of the component. Note that this does *not* update the proxy. """
-    client = getDockerClient()
-    
-    # Ensure that we have the image. If not, we try to download it.
-    self.ensureImage(client)
-    
-    # Start the instance with the proper image ID.
-    container = self.createContainer(client)
-    report('Starting container ' + container['Id'])
-    client.start(container)
-    
-    # Health check until the instance is ready.    
-    report('Waiting for health checks...')
-    
-    # Start a health check thread.
-    healthcheck_thread = Thread(target = self.healthCheck, args=[container])
-    healthcheck_thread.daemon = True
-    healthcheck_thread.start()
-    
-    # Wait for the health thread to finish.
-    healthcheck_thread.join(self.config.getReadyCheckTimeout())
-    
-    # If the thread is still alived, then our join timed out.
-    if healthcheck_thread.isAlive():
-      report('Timed out waiting for health checks. Stopping container...')
-      client.stop(container)
-      report('Container stopped')
-      return None
-    
-    # Otherwise, the container is ready. Set it as starting.
-    setContainerComponent(container, self.getName()) 
-    setContainerStatus(container, 'starting')
-    return container
-    
-  def healthCheck(self, container):
-    """ Thread which performs health check(s) on a container. """
+
+  def readyCheck(self, container, timeout):
+    """ Method which performs ready health check(s) on a container, returning whether
+        they succeeded or not.
+        
+        container: The container running the component that will be checked.
+        timeout: The amount of time after which the checks have timed out.
+    """
     checks = []
     for check in self.config.ready_checks:
       checks.append((check, buildHealthCheck(check)))
@@ -170,7 +160,7 @@ class Component(object):
     start = time.time()
     while True:
       now = time.time()
-      if now - start > self.config.getReadyCheckTimeout():
+      if now - start > timeout:
         # Timed out completely.
         return False
       
@@ -192,6 +182,42 @@ class Component(object):
     
     return True
     
+  def start(self):
+    """ Starts a new instance of the component. Note that this does *not* update the proxy. """
+    client = getDockerClient()
+    
+    # Ensure that we have the image. If not, we try to download it.
+    self.ensureImage(client)
+    
+    # Start the instance with the proper image ID.
+    container = self.createContainer(client)
+    report('Starting container ' + container['Id'])
+    client.start(container)
+    
+    # Health check until the instance is ready.    
+    report('Waiting for health checks...')
+    
+    # Start a health check thread to determine when the component is ready.
+    timeout = self.config.getReadyCheckTimeout()
+    readycheck_thread = Thread(target = self.readyCheck, args=[container, timeout])
+    readycheck_thread.daemon = True
+    readycheck_thread.start()
+    
+    # Wait for the health thread to finish.
+    readycheck_thread.join(self.config.getReadyCheckTimeout())
+    
+    # If the thread is still alived, then our join timed out.
+    if readycheck_thread.isAlive():
+      report('Timed out waiting for health checks. Stopping container...')
+      client.stop(container)
+      report('Container stopped')
+      return None
+    
+    # Otherwise, the container is ready. Set it as starting.
+    setContainerComponent(container, self.getName()) 
+    setContainerStatus(container, 'starting')
+    return container
+
   def getAllContainers(self, client):
     """ Returns all the matching containers for this component. """
     containers = []

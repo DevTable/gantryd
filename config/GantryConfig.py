@@ -1,15 +1,15 @@
 from object import CFObject, CFField
   
-class _ReadyCheck(CFObject):
+class _HealthCheck(CFObject):
   """ A single check to perform to verify that a component is ready to be
-      pushed.
+      pushed or is running properly.
   """
   kind = CFField('kind')
   id = CFField('id').default('')
   timeout = CFField('timeout').kind(int).default(1)
 
   def __init__(self):
-    super(_ReadyCheck, self).__init__('Ready Check')
+    super(_HealthCheck, self).__init__('Health Check')
     
   def getTitle(self):
     """ Returns a descriptive title for the check. """
@@ -37,7 +37,8 @@ class _Component(CFObject):
   command = CFField('command').list_of(str).default([])
   user = CFField('user').default('')
   ports = CFField('ports').list_of(_PortMapping)
-  ready_checks = CFField('readyChecks').list_of(_ReadyCheck)
+  ready_checks = CFField('readyChecks').list_of(_HealthCheck).default([])
+  health_checks = CFField('healthChecks').list_of(_HealthCheck).default([])
   ready_timeout = CFField('readyTimeout').kind(int).default(10000)
     
   def __init__(self):

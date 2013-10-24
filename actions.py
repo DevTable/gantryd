@@ -1,31 +1,33 @@
 def start_action(component):
   if component.isRunning():
     print 'Component ' + component.getName() + ' is already running'
-    return
+    return False
     
-  component.update()
+  return component.update()
   
 def stop_action(component):
   if not component.isRunning():
     print 'Component ' + component.getName() + ' is not running'
-    return
+    return False
 
   component.stop(kill = False)
+  return False
   
 def kill_action(component):
   if not component.isRunning():
     print 'Component ' + component.getName() + ' is not running'
-    return
+    return False
 
   component.stop(kill = True)
+  return False
   
 def update_action(component):
-  component.update()
+  return component.update()
   
 def list_action(component):
   if not component.isRunning():
     print 'Component ' + component.getName() + ' is not running'
-    return
+    return False
 
   print "%-20s %-20s %-20s %-20s" % ('CONTAINER ID', 'UPTIME', 'IMAGE ID', 'STATUS')
   
@@ -38,3 +40,6 @@ def list_action(component):
     image = container['Image']
     i = (id[0:12], uptime, image, status)
     print "%-20s %-20s %-20s %-20s" % i
+    
+  return False
+

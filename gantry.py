@@ -4,6 +4,9 @@ import argparse
 from actions import start_action, update_action, list_action, stop_action, kill_action
 from config.GantryConfig import Configuration
 from runtime.manager import RuntimeManager
+from util import report, fail
+
+import time
 
 ACTIONS = {
   'start': start_action,
@@ -30,16 +33,33 @@ def loadConfig(config_file):
     return None
     
 
+def monitor(component):
+  while True:
+    # Sleep for 30 seconds.
+    time.sleep(30)
+    
+    # Conduct the checks.
+    report('Checking in on component ' + component.getName())
+    if not component.isHealthy():
+      report('Component ' + component.getName() + ' is not healthy. Killing and restarting')
+      component.stop(kill = True)
+      if not component.update():
+        report('Could not restart component ' + component.getName())
+        return
+
+
 def run():
   # Setup the gantry arguments
   parser = argparse.ArgumentParser(description='gantry continuous deployment system')
   parser.add_argument('config_file', help = 'The configuration file')
   parser.add_argument('action', help = 'The action to perform', choices = ACTIONS.keys())
   parser.add_argument('component_name', help = 'The name of the component to manage')
+  parser.add_argument('-m', dest='monitor', action='store_true', help = 'If specified and the action is "start" or "update", gantry will remain running to monitor components, auto restarting them as necessary')
   
   args = parser.parse_args()
   component_name = args.component_name
   action = args.action
+  should_monitor = args.monitor
   config_file = args.config_file
   
   # Load the config.
@@ -56,6 +76,9 @@ def run():
     raise Exception('Unknown component: ' + component_name)
 
   # Run the action with the component and config.
-  ACTIONS[action](component)
+  result = ACTIONS[action](component)
+  if result and should_monitor:
+    report('Starting monitoring of component: ' + component_name)
+    monitor(component)
   
 run()

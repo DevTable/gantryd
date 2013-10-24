@@ -7,10 +7,13 @@ from util import report, fail, getDockerClient
 
 CHECK_SLEEP_TIME = 30 # 30 seconds
 CHECK_SHORT_SLEEP_TIME = 10 # 10 seconds
+MONITOR_SLEEP_TIME = 30 # 30 seconds
 
 class ComponentWatcher(object):
   """ Helper class which watches a specific component's status in etcd and
-      manages the update/stop/kill process (if necessary).
+      manages the update/stop/kill process (if necessary). Also watches the
+      component itself once started, and ensures that it remains running (restarting
+      it if it failed).
   """
   def __init__(self, component, project_name, machine_id, etcd_client):
     self.component = component
@@ -23,10 +26,52 @@ class ComponentWatcher(object):
     # Setup the watcher thread.
     self.watcher_thread = threading.Thread(target = self.waitForCommand, args = [])
     self.watcher_thread.daemon = True
+    
+    # Setup the monitor thread.
+    self.monitor_thread = threading.Thread(target = self.monitorComponent, args = [])
+    self.monitor_thread.daemon = True
+
+    # Setup an event to ping the monitor thread when it should restart checking in
+    # on the component.
+    self.monitor_event = threading.Event()
+    
+    # Setup a lock to prevent multiple threads from trying to (re)start a container.
+    self.update_lock = threading.Lock()
 
   def start(self):
     """ Starts the watcher. """
     self.watcher_thread.start()
+    self.monitor_thread.start()
+
+  def monitorComponent(self):
+    """ Monitors a component by pinging it every MONITOR_SLEEP_TIME seconds or so. If a component
+        fails, then the system will try to restart it. If that fails, the component is marked
+        as dead.
+    """
+    while True:
+      # Wait for the component to be running.
+      self.monitor_event.wait()
+      
+      # Sleep MONITOR_SLEEP_TIME seconds.
+      time.sleep(MONITOR_SLEEP_TIME)
+
+      # Check the component.
+      report('Checking in on component ' + self.component.getName())
+      if not self.component.isHealthy():
+        with self.update_lock:
+          # Just to be sure...
+          if not self.is_running:
+            continue
+
+          # Ensure that the component is still ready.
+          state = self.state.getState()
+          current_status = ComponentState.getStatusOf(state)
+          if current_status == READY_STATUS:
+            report('Component ' + self.component.getName() + ' is not healthy. Restarting...')
+            if not self.component.update():
+              report('Could not restart component ' + self.component.getName())
+              self.monitor_event.clear()
+              continue
 
   def waitForCommand(self):
     """ Waits for an command notification on the component in etcd. If one is received,
@@ -48,70 +93,98 @@ class ComponentWatcher(object):
 
       # Take actions based on the status requested.           
       current_status = ComponentState.getStatusOf(state)
-      if current_status == STOPPED_STATUS:
-        if was_initial_loop:
-          report('Component ' + self.component.getName() + ' is marked as stopped')
-
-        self.is_running = False
-        self.component.stop(kill = False)
-        continue
-      elif current_status == KILLED_STATUS:
-        if was_initial_loop:
-          report('Component ' + self.component.getName() + ' is marked as killed')
-
-        self.is_running = False
-        self.component.stop(kill = True)
-        continue
+      sleep_time = self.handleStatus(current_status, state, was_initial_loop)
       
-      # If the status is ready, we update the component if:
-      #   - The ID of the component's image does not match that found in the status.
-      #   - The process is not running.
-      imageid = ComponentState.getImageIdOf(state)
-      imageid_different = imageid != self.component.getImageId()
-      should_update = not self.is_running or imageid_different
-      
-      if current_status == READY_STATUS and should_update:
-        # We need to update this machine's copy. First, do a test and set to ensure that
-        # we are the only machine allowed to update. If the test and set fails, we'll
-        # try again in 10s.
-        if imageid_different:
-          report('Detected pushed update for component ' + self.component.getName())
-        else:
-          report('Component ' + self.component.getName() + ' is not running; starting')
-          
-        result = self.state.setUpdatingStatus('updating', self.machine_id, state)
-        if not result:
-          # The exchange failed. Sleep CHECK_SHORT_SLEEP_TIME seconds and try again.
-          report('Could not grab update lock. Will try again in ' + str(CHECK_SHORT_SLEEP_TIME) + ' seconds')          
-          sleep_time = CHECK_SHORT_SLEEP_TIME
-          continue
-        
-        # Start the update by pulling the repo for the component.
-        if imageid_different:
-          report('Pulling the image for component ' + self.component.getName())
-          if not self.component.pullRepo():
-            # The pull failed.
-            report('Pull failed of image ' + imageid[0:12] + ' for component ' + self.component.getName())
-            self.state.setUpdatingStatus('pullfail', self.machine_id, result)
-            sleep_time = CHECK_SLEEP_TIME
-            continue
-          
-        # Run the update on the component and wait for it to finish.
-        if imageid_different:
-          report('Starting update for component ' + self.component.getName())
+  def handleStatus(self, current_status, state, was_initial_check):
+    """ Handles the various status states for the component, returning the
+        amount of time after which to retry lookup up the state or -1 for
+        terminated.
+    """
+    if current_status == STOPPED_STATUS:
+      return self.handleStopped(was_initial_check)
+    elif current_status == KILLED_STATUS:
+      return self.handleKilled(was_initial_check)
+    elif current_status == READY_STATUS:
+      with self.update_lock:
+        return self.handleReady(state, was_initial_check)
+  
+  def handleStopped(self, was_initial_check):
+    """ Handles when the component has been marked to be stopped. """
+    self.monitor_event.clear()
 
-        if not self.component.update():
-          # The update failed.
-          self.state.setUpdatingStatus('updatefail', self.machine_id, result)
-          sleep_time = CHECK_SLEEP_TIME
-          continue
+    if was_initial_check:
+      report('Component ' + self.component.getName() + ' is marked as stopped')
+
+    self.is_running = False
+    self.component.stop(kill = False)
+    return CHECK_SLEEP_TIME
+
+  def handleKilled(self, was_initial_check):
+    """ Handles when the component has been marked to be killed. """
+    self.monitor_event.clear()
+
+    if was_initial_check:
+      report('Component ' + self.component.getName() + ' is marked as killed')
+
+    self.is_running = False
+    self.component.stop(kill = True)
+    return CHECK_SLEEP_TIME
+      
+  def handleReady(self, state, was_initial_check):
+    """ Handles when the component has been marked as ready. """
+    
+    # If the status is ready, we update the component if:
+    #   - The ID of the component's image does not match that found in the status.
+    #   - The process is not running.
+    imageid = ComponentState.getImageIdOf(state)
+    imageid_different = imageid != self.component.getImageId()
+    should_update = not self.is_running or imageid_different
+    
+    if should_update:
+      self.is_running = False
+      self.monitor_event.clear()
+    
+      # We need to update this machine's copy. First, do a test and set to ensure that
+      # we are the only machine allowed to update. If the test and set fails, we'll
+      # try again in 10s.
+      if imageid_different:
+        report('Detected pushed update for component ' + self.component.getName())
+      else:
+        report('Component ' + self.component.getName() + ' is not running; starting')
         
-        # Otherwise, the update has succeeded. Mark the component as ready, so another
-        # gantryd can start its update.
-        if imageid_different:
-          report('Update completed for component ' + self.component.getName())
-        else:
-          report('Component ' + self.component.getName() + ' is now running')
-          
-        self.state.setReadyStatus(self.component.getImageId())
-        self.is_running = True
+      result = self.state.setUpdatingStatus('updating', self.machine_id, state)
+      if not result:
+        # The exchange failed. Sleep CHECK_SHORT_SLEEP_TIME seconds and try again.
+        report('Could not grab update lock. Will try again in ' + str(CHECK_SHORT_SLEEP_TIME) + ' seconds')          
+        return CHECK_SHORT_SLEEP_TIME
+      
+      # Start the update by pulling the repo for the component.
+      if imageid_different:
+        report('Pulling the image for component ' + self.component.getName())
+        if not self.component.pullRepo():
+          # The pull failed.
+          report('Pull failed of image ' + imageid[0:12] + ' for component ' + self.component.getName())
+          self.state.setUpdatingStatus('pullfail', self.machine_id, result)
+          return CHECK_SLEEP_TIME
+        
+      # Run the update on the component and wait for it to finish.
+      if imageid_different:
+        report('Starting update for component ' + self.component.getName())
+
+      if not self.component.update():
+        # The update failed.
+        self.state.setUpdatingStatus('updatefail', self.machine_id, result)
+        return CHECK_SLEEP_TIME
+      
+      # Otherwise, the update has succeeded. Mark the component as ready, so another
+      # gantryd can start its update.
+      if imageid_different:
+        report('Update completed for component ' + self.component.getName())
+      else:
+        report('Component ' + self.component.getName() + ' is now running')
+        
+      self.state.setReadyStatus(self.component.getImageId())
+      self.is_running = True
+      self.monitor_event.set()    
+
+    return CHECK_SLEEP_TIME
