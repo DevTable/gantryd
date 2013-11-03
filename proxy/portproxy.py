@@ -11,8 +11,6 @@ from uuid import uuid4
 from jinja2 import Environment, FileSystemLoader
 from collections import defaultdict
 
-logger = logging.getLogger(__name__)
-
 TEMPLATE_FOLDER = 'proxy'
 
 HAPROXY = 'haproxy'
@@ -21,7 +19,10 @@ HAPROXY_PID_FILE = '/var/run/haproxy-private.pid'
 HAPROXY_CONFIG_FILE = 'haproxy.conf'
 
 class Proxy(object):
-  def __init__(self):    
+  def __init__(self):
+    # Logging.
+    self.logger = logging.getLogger(__name__)
+
     # The registered routes, by external port number.
     self._port_routes = {}
 
@@ -34,6 +35,7 @@ class Proxy(object):
 
   def get_connections(self):
     """ Returns the connection information for all proxy processes. """
+    self.logger.debug('Getting proxy connections')
     connections = []
     for p in psutil.process_iter():
       if p.is_running() and p.name == HAPROXY:
@@ -59,7 +61,7 @@ class Proxy(object):
 
   def commit(self):
     """ Commits the changes made to the proxy. """
-    logger.debug("Restarting haproxy with new rules.")
+    self.logger.debug("Restarting haproxy with new rules.")
 
     # If the port routes are empty, add a dummy mapping to the proxy.
     if len(self._port_routes.values()) == 0:

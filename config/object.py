@@ -2,6 +2,9 @@ import json
 import string
 import copy
 
+class ConfigParseException(Exception):
+    pass
+
 class CFObject(object):
   """ 
     Defines a class in which all fields marked with the CFField are automatically handled
@@ -52,7 +55,7 @@ class CFObject(object):
         
       field = instance.get_fields()[name]
       if field.is_required() and not name in dictionary:
-        raise Exception('Missing required property ' + name + ' under object ' + instance.name)
+        raise ConfigParseException('Missing required property ' + name + ' under object ' + instance.name)
 
       if name in dictionary:
         field.populate(instance, dictionary[name])
@@ -129,13 +132,13 @@ class CFField(object):
     """ Attempts to populate this list from the given primitive value. """
     if self.field_kind == list:
       if not isinstance(primitive, list):
-        raise Exception('Expected list for field ' + self.name)
+        raise ConfigParseException('Expected list for field ' + self.name)
       
       list_value = []
       for p in primitive:
         c_value = self.get_converted_value(instance, p, self.list_kind)
         if not isinstance(c_value, self.list_kind):
-          raise Exception('Expected items of kind ' + str(self.list_kind) + ' in ' + self.name)
+          raise ConfigParseException('Expected items of kind ' + str(self.list_kind) + ' in ' + self.name)
         list_value.append(c_value)
         
       self.update(instance, list_value)
@@ -147,7 +150,7 @@ class CFField(object):
     # Class types.
     if issubclass(kind, CFObject):
       if not isinstance(primitive, dict):
-        raise Exception('Expected dictionary for field ' + self.name)
+        raise ConfigParseException('Expected dictionary for field ' + self.name)
       
       built = kind.build(primitive)
       built.parent = instance;

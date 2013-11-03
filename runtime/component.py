@@ -4,7 +4,7 @@ from cStringIO import StringIO
 
 from health.checks import buildHealthCheck
 from metadata import getContainerStatus, setContainerStatus, removeContainerMetadata, getContainerComponent, setContainerComponent
-from util import report, fail, getDockerClient
+from util import report, fail, getDockerClient, ReportLevels
 
 import os
 import subprocess
@@ -14,14 +14,14 @@ import select
 import socket
 import docker
 
-logger = logging.getLogger(__name__)
-
 class Component(object):
   """ A component that can be/is running. Tracks all the runtime information
       for a component.
-  """
-  
+  """  
   def __init__(self, manager, config):    
+    # Logging.
+    self.logger = logging.getLogger(__name__)
+  
     # The overall manager for components, which tracks global state.
     self.manager = manager
 
@@ -37,6 +37,7 @@ class Component(object):
         this will return True for ALL possible containers of the component, including
         deprecated ones.
     """
+    self.logger.debug('Checking if component %s is running', self.getName())
     client = getDockerClient()
     return len(self.getAllContainers(client)) > 0    
   
@@ -57,21 +58,25 @@ class Component(object):
     """
     client = getDockerClient()
     named_image = self.config.getFullImage()
+    self.logger.debug('Finding image ID for component %s with named image %s', self.getName(), named_image)
     result = client.inspect_image(named_image)
     return result['id'] 
     
   def pullRepo(self):
     """ Attempts to pull the repo for this component. On failure, returns False. """
     try:
+      self.logger.debug('Attempting to pull repo for component %s: %s:%s', self.getName(), self.config.repo, self.config.tag)
       client = getDockerClient()
       client.pull(self.config.repo, tag = self.config.tag)
     except Exception as e:
+      self.logger.exception(e)
       return False
     
   def update(self):
     """ Updates a running instance of the component. Returns True on success and False
         otherwise.
     """
+    self.logger.debug('Updating component %s', self.getName())
     client = getDockerClient()
     
     # Get the list of currently running container(s).
@@ -88,7 +93,7 @@ class Component(object):
     
     # Update the port proxy to redirect the external ports to the new
     # container.
-    report('Redirecting traffic to new container')
+    report('Redirecting traffic to new container', component = self)
     self.manager.adjustForUpdatingComponent(self, container)
     return True
     
@@ -97,17 +102,18 @@ class Component(object):
     if not self.isRunning():
       return
 
+    self.logger.debug('Stopping component %s', self.getName())
     client = getDockerClient()
 
     # Mark all the containers as draining.
-    report('Draining all containers...')
+    report('Draining all containers...', component = self)
     for container in self.getAllContainers(client):
       setContainerStatus(container, 'draining')
     
     # Kill any associated containers if asked.
     if kill:
       for container in self.getAllContainers(client):
-        report('Killing container ' + container['Id'][0:12])
+        report('Killing container ' + container['Id'][0:12], component = self)
         client.kill(container)
         removeContainerMetadata(container)
    
@@ -128,8 +134,10 @@ class Component(object):
     """ Runs the health checks on this component's container, ensuring that it is healthy.
         Returns True if healthy and False otherwise.
     """
+    self.logger.debug('Checking if component %s is healthy...', self.getName())    
     container = self.getPrimaryContainer()
     if not container:
+      self.logger.debug('No container running for component %s', self.getName())
       return False
       
     checks = []
@@ -137,11 +145,13 @@ class Component(object):
       checks.append((check, buildHealthCheck(check)))
 
     for (config, check) in checks:
-      report('Running health check: ' + config.getTitle())
+      report('Running health check: ' + config.getTitle(), component = self)
       result = check.run(container, report)
       if not result:
+        self.logger.debug('Health check %s failed for component %s', check.getTitle(), self.getName())
         return False
         
+    self.logger.debug('Component %s is healthy', self.getName())    
     return True
     
   ######################################################################
@@ -153,6 +163,7 @@ class Component(object):
         container: The container running the component that will be checked.
         timeout: The amount of time after which the checks have timed out.
     """
+    self.logger.debug('Checking if component %s is ready...', self.getName())    
     checks = []
     for check in self.config.ready_checks:
       checks.append((check, buildHealthCheck(check)))
@@ -162,20 +173,21 @@ class Component(object):
       now = time.time()
       if now - start > timeout:
         # Timed out completely.
+        self.logger.debug('Component %s ready checks have timed out')
         return False
       
       # Try each check. If any fail, we'll sleep and try again.
       check_failed = None
       for (config, check) in checks:
-        report('Running health check: ' + config.getTitle())
+        report('Running health check: ' + config.getTitle(), component = self)
         result = check.run(container, report)
         if not result:
-          report('Health check failed')
+          report('Health check failed', component = self)
           check_failed = config
           break
       
       if check_failed:
-        report('Sleeping ' + str(check_failed.timeout) + ' second(s)...')
+        report('Sleeping ' + str(check_failed.timeout) + ' second(s)...', component = self)
         time.sleep(check_failed.timeout)
       else:
         break
@@ -185,17 +197,18 @@ class Component(object):
   def start(self):
     """ Starts a new instance of the component. Note that this does *not* update the proxy. """
     client = getDockerClient()
+    self.logger.debug('Starting container for component %s', self.getName())
     
     # Ensure that we have the image. If not, we try to download it.
     self.ensureImage(client)
     
     # Start the instance with the proper image ID.
     container = self.createContainer(client)
-    report('Starting container ' + container['Id'])
+    report('Starting container ' + container['Id'], component = self)
     client.start(container)
     
     # Health check until the instance is ready.    
-    report('Waiting for health checks...')
+    report('Waiting for health checks...', component = self)
     
     # Start a health check thread to determine when the component is ready.
     timeout = self.config.getReadyCheckTimeout()
@@ -208,9 +221,9 @@ class Component(object):
     
     # If the thread is still alived, then our join timed out.
     if readycheck_thread.isAlive():
-      report('Timed out waiting for health checks. Stopping container...')
+      report('Timed out waiting for health checks. Stopping container...', component = self)
       client.stop(container)
-      report('Container stopped')
+      report('Container stopped', component = self)
       return None
     
     # Otherwise, the container is ready. Set it as starting.
@@ -231,8 +244,9 @@ class Component(object):
     """ Creates a docker container for this component and returns it. """
     command = self.getCommand()
     if not command:
-      fail('No command defined in either gantry config or docker image for component ' + self.getName())
+      fail('No command defined in either gantry config or docker image for component ' + self.getName(), component = self)
     
+    self.logger.debug('Starting container for component %s with command %s', self.getName(), command)
     container = client.create_container(self.config.getFullImage(), command,
       user = self.config.getUser(), ports = [str(p) for p in self.config.getContainerPorts()])
       
@@ -262,6 +276,6 @@ class Component(object):
       try:
         client.pull(self.config.repo)
       except Exception as e:
-        fail('Could not pull reoi ' + self.config.repo + ': ' + str(e))
+        fail('Could not pull repo ' + self.config.repo, container = self, exception = str(e))
       
    

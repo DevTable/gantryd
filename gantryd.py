@@ -79,4 +79,5 @@ def start():
   action = ACTIONS[args.action]
   action(dclient, args)
 
-start()
+if __name__ == "__main__":
+   start()

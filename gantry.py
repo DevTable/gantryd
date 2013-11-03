@@ -81,4 +81,5 @@ def run():
     report('Starting monitoring of component: ' + component_name)
     monitor(component)
   
-run()
+if __name__ == "__main__":
+  run()

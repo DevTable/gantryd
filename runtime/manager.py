@@ -1,7 +1,7 @@
 from component import Component
 from metadata import getContainerStatus, setContainerStatus, removeContainerMetadata
 from proxy.portproxy import Proxy, Route
-from util import report, fail, getDockerClient
+from util import report, fail, getDockerClient, ReportLevels
 
 from collections import defaultdict
 
@@ -12,13 +12,14 @@ import time
 import logging
 import containerutil
 
-logger = logging.getLogger(__name__)
-
 class RuntimeManager(object):
   """ Manager class which handles tracking of all the components and other runtime
       information.
   """
   def __init__(self, config, daemon_mode = False):
+    # Logging.
+    self.logger = logging.getLogger(__name__)
+
     # Whether gantry is running in daemon mode.
     self.daemon_mode = daemon_mode
     
@@ -60,11 +61,13 @@ class RuntimeManager(object):
     """ Adjusts the runtime for a component which has been started in the given
         container.
     """
+    self.logger.debug('Adjusting runtime for updating component: %s', component.getName())
     self.updateProxy()
    
   def adjustForStoppingComponent(self, component):
     """ Adjusts the runtime for a component which has been stopped.
     """
+    self.logger.debug('Adjusting runtime for stopped component: %s', component.getName())
     self.updateProxy()
     
   def findConnectionLessContainers(self, containers):
@@ -98,7 +101,7 @@ class RuntimeManager(object):
         container_local_ports = containerutil.getLocalPorts(container)
         if ports.intersection(container_local_ports):
           connectionless.remove(container)
-          
+
     return connectionless
         
   def checkProxy(self):
@@ -122,7 +125,7 @@ class RuntimeManager(object):
         
         # Find the containers that no longer need to be running. Any container with no
         # valid connections coming in and a status of 'draining', can be shutdown.
-        report('Monitor check started')
+        report('Monitor check started', level = ReportLevels.BACKGROUND)
         containers_to_shutdown = self.findConnectionLessContainers(containers)
         if len(containers_to_shutdown) > 0:
           with self.watcher_lock:
@@ -131,18 +134,18 @@ class RuntimeManager(object):
 
           for container in containers_to_shutdown:
             setContainerStatus(container, 'shutting-down')
-            report('Shutting down container: ' + container['Id'][0:12])
+            report('Shutting down container: ' + container['Id'][0:12], level = ReportLevels.BACKGROUND)
             client.stop(container)
             removeContainerMetadata(container)
         
         # Determine how many residual containers are left over.
         difference = len(containers) - len(containers_to_shutdown)
         if difference > 0:
-          report(str(difference) + ' additional containers to monitor. Sleeping for 10 seconds')            
+          report(str(difference) + ' additional containers to monitor. Sleeping for 10 seconds', level = ReportLevels.BACKGROUND)            
           time.sleep(10)
           counter = counter + 1
       
-      report('Proxy updated')
+      report('Monitor check finished', level = ReportLevels.BACKGROUND)
       if not self.daemon_mode:
         # Quit now that we're done.
         return
@@ -160,7 +163,7 @@ class RuntimeManager(object):
     
     # Add routes for the non-draining containers and collect the draining containers to
     # watch.
-    report('Checking container statuses...')
+    report('Finding running containers...', level = ReportLevels.EXTRA)
     draining_containers = []
     starting_containers = []
     
@@ -177,10 +180,10 @@ class RuntimeManager(object):
 
     # Commit the changes to the proxy.
     if draining_containers or starting_containers:
-      report('Updating proxy...')
+      report('Updating proxy...', level = ReportLevels.EXTRA)
       self.proxy.commit()
     else:
-      report('Shutting down proxy...')
+      report('Shutting down proxy...', level = ReportLevels.EXTRA)
       self.proxy.shutdown()
     
     # Mark the starting containers as running.
@@ -188,7 +191,7 @@ class RuntimeManager(object):
       setContainerStatus(container, 'running')
 
     if draining_containers:
-      report('Starting monitoring...')
+      report('Starting monitoring...', level = ReportLevels.EXTRA)
     
     # If there are any draining containers, add them to the watcher thread.
     with self.watcher_lock:

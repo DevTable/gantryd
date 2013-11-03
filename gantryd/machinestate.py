@@ -13,7 +13,7 @@ class MachineState(EtcdState):
   def __init__(self, project_name, machine_id, etcd_client):
     path = getMachineStatePath(project_name, machine_id)
     super(MachineState, self).__init__(path, etcd_client)
-    
+
   def registerMachine(self, component_names, ttl = 60):
     """ Registers this machine with etcd. """
     machine_state = {
