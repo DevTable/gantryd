@@ -1,4 +1,6 @@
-from util import report, fail, getDockerClient
+import containerutil
+
+from util import getDockerClient
 
 import logging
 
@@ -13,13 +15,8 @@ class HealthCheck(object):
         false otherwise.
     """
     return False
-    
-  def getLocalPort(self, container, container_port):
-    """ Returns the port on the local system for the given container port or 0 if none. """
+
+  def getContainerIPAddress(self, container):
+    """ Returns the IP address on which the container is running. """
     client = getDockerClient()
-    try:
-      self.logger.debug('Looking up port %d for container %s', container_port, container)
-      return client.port(container, container_port)
-    except Exception as e:
-      self.logger.exception(e)
-      return 0
+    return containerutil.getContainerIPAddress(client, container)

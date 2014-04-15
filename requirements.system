@@ -1,2 +1,4 @@
 python-dev
 haproxy
+python-virtualenv
+libssl-dev

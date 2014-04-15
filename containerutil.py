@@ -14,3 +14,8 @@ def getLocalPorts(container):
     container_ports = [container_ports]
     
   return set([int(p.split('->')[0]) for p in container_ports if len(p) > 0])
+
+def getContainerIPAddress(client, container):
+  """ Returns the IP address on which the container is running. """
+  container_info = client.inspect_container(container)
+  return container_info['NetworkSettings']['IPAddress']

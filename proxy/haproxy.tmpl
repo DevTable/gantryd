@@ -25,7 +25,7 @@ frontend port_{{ port }} *:{{ port }}
     default_backend {{ route.id }}-backend
 {% endfor %}
 
-{%- for route in port_routes.values() -%}
+{% for route in port_routes.values() %}
 backend {{ route.id }}-backend
     {%- if route.is_http %}
     mode http
@@ -36,4 +36,5 @@ backend {{ route.id }}-backend
     timeout server 86400000
     timeout connect 5000
     server {{ route.id }}-backend-0 {{ route.container_ip }}:{{ route.container_port }}
-{%- endfor -%}
+
+{% endfor %}

@@ -1,2 +1,4 @@
 .devtable
 gantry.xml
+*.pyc
+venv

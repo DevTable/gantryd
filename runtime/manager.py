@@ -170,10 +170,11 @@ class RuntimeManager(object):
     for component in self.components.values():
       for container in component.getAllContainers(client):
         if getContainerStatus(container) != 'draining':
+          container_ip = containerutil.getContainerIPAddress(client, container)
           starting_containers.append(container)
           for mapping in component.config.ports:
-            local_port = containerutil.getLocalPort(client, container, mapping.container)
-            route = Route(mapping.kind == 'http', mapping.external, 'localhost', local_port)
+            route = Route(mapping.kind == 'http', mapping.external, container_ip,
+                          mapping.container)
             self.proxy.add_route(route)
         else:
           draining_containers.append(container)

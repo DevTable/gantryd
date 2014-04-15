@@ -28,22 +28,18 @@ class TcpCheck(HealthCheck):
     
 class HttpRequestCheck(HealthCheck):
   """ A health check which tries to connect to an HTTP server on a known port. """
-  def __init__(self, config):
+  def __init__(self, protocol, config):
     super(HttpRequestCheck, self).__init__()
-    self.cached_port = None
+    self.protocol = protocol
     self.config = config
     
   def run(self, container, report):
     container_port = self.config.getExtraField('port')
+    container_ip = self.getContainerIPAddress(container)
     
-    # Note: We cache the port here both for speed reasons and because of a bug in
-    # docker-py whereby subsequent calls to getLocalPort fail for some odd reason.
-    if not self.cached_port:
-      self.cached_port = self.getLocalPort(container, container_port)
-
-    address = 'http://localhost:' + str(self.cached_port)
+    address = '%s://%s:%s' % (self.protocol, container_ip, container_port)
     if self.config.hasExtraField('path'):
-      address += path
+      address += self.config.getExtraField('path')
     
     report('Checking HTTP address in container ' + container['Id'][0:12] + ': ' + address,
       level = ReportLevels.EXTRA)

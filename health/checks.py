@@ -1,10 +1,13 @@
+from functools import partial
+
 from networkcheck import TcpCheck, HttpRequestCheck
 from util import report, fail, getDockerClient
 
 # The list of registered health checks
 HEALTH_CHECKS = {
   'tcp': TcpCheck,
-  'http': HttpRequestCheck
+  'http': partial(HttpRequestCheck, 'http'),
+  'https': partial(HttpRequestCheck, 'https'),
 }
 
 def buildHealthCheck(check_config):
