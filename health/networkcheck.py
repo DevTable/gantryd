@@ -1,8 +1,8 @@
 import socket
 import urllib2
 
-from healthcheck import HealthCheck
-from util import report, ReportLevels
+from health.healthcheck import HealthCheck
+from util import ReportLevels
 
 class TcpCheck(HealthCheck):
   """ A health check which tries to connect to a port via TCP. """
@@ -12,14 +12,14 @@ class TcpCheck(HealthCheck):
     
   def run(self, container, report):
     container_port = self.config.getExtraField('port')
-    local_port = self.getLocalPort(container, container_port)
+    container_ip = self.getContainerIPAddress(container)
     
-    report('Checking TCP port in container ' + container['Id'][0:12] + ': ' + str(local_port),
+    report('Checking TCP port in container ' + container['Id'][0:12] + ': ' + str(container_port),
       level = ReportLevels.EXTRA)
     try:
-      s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      s.connect('127.0.0.1', local_port)
-      s.close()
+      sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+      sock.connect(container_ip, container_port)
+      sock.close()
     except:
       return False
       
@@ -46,8 +46,8 @@ class HttpRequestCheck(HealthCheck):
     try:
       response = urllib2.urlopen(address, timeout = 2)
       response.read()
-    except Exception as e:
-      self.logger.exception(e)
+    except Exception as exc:
+      self.logger.exception(exc)
       return False
       
     return True

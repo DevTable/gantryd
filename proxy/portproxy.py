@@ -38,7 +38,7 @@ class Proxy(object):
     self.logger.debug('Getting proxy connections')
     connections = []
     for p in psutil.process_iter():
-      if p.is_running() and p.name == HAPROXY:
+      if p.is_running() and p.name() == HAPROXY:
         connections.extend(p.get_connections())
         
     return connections

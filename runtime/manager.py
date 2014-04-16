@@ -74,32 +74,28 @@ class RuntimeManager(object):
     """ Determines which containers no longer have any valid connections to the
         outside world.
     """
+
     # Build the set of active connections from all the running proxy processes.
+    active_container_ips = set()
     connections = self.proxy.get_connections()
-    
-    # Build the set of container-local ports used.
-    ports = set([])
+
     for connection in connections:
       laddr = connection.laddr
       raddr = connection.raddr
       if not laddr or not raddr:
         continue
       
-      laddress = laddr[0]
-      raddress = raddr[0]
-      lport = laddr[1]
-      rport = raddr[1]
-      
-      if laddress == '127.0.0.1' and raddress == '127.0.0.1':
-        ports.add(rport)
+      active_container_ips.add(raddr[0])
+
 
     # For each draining container, if the port set contains one of the known mappings, then
     # the container is still being used.
+    client = getDockerClient()
     connectionless = list(containers)
     for container in containers:
       if getContainerStatus(container) == 'draining':
-        container_local_ports = containerutil.getLocalPorts(container)
-        if ports.intersection(container_local_ports):
+        container_ip = containerutil.getContainerIPAddress(client, container)
+        if container_ip in active_container_ips:
           connectionless.remove(container)
 
     return connectionless
