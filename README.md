@@ -67,6 +67,9 @@ The configuration defines the various components of the project you want to mana
        ],
        "healthChecks": [
          { "kind": "http", "port": 8888, "path": "/some/path" }
+       ],
+       "bindings": [
+         { "external": "/an/external/path", "volume": "/some/container/path"}
        ]
     }
   ]
@@ -83,6 +86,7 @@ The configuration defines the various components of the project you want to mana
 | ports        | Mappings of container ports to external ports                                     |            |
 | readyChecks  | The various checks to run to ensure the container is ready (see below for list)   |            |
 | healthChecks | The various checks to run to ensure the container is healthy (see below for list) |            |
+| bindings     | Mapping between external hosts paths and the corresponding container volumes      |            |
 
 
 ### Terminology

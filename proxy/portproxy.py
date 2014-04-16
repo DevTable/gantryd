@@ -1,15 +1,9 @@
 import subprocess
-import time
 import logging
-import select
-import socket
 import psutil
-import subprocess
-import logging
 
 from uuid import uuid4
 from jinja2 import Environment, FileSystemLoader
-from collections import defaultdict
 
 TEMPLATE_FOLDER = 'proxy'
 
@@ -37,9 +31,9 @@ class Proxy(object):
     """ Returns the connection information for all proxy processes. """
     self.logger.debug('Getting proxy connections')
     connections = []
-    for p in psutil.process_iter():
-      if p.is_running() and p.name() == HAPROXY:
-        connections.extend(p.get_connections())
+    for proc in psutil.process_iter():
+      if proc.is_running() and proc.name() == HAPROXY:
+        connections.extend(proc.get_connections())
         
     return connections
 

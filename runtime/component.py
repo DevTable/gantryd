@@ -205,7 +205,7 @@ class Component(object):
     # Start the instance with the proper image ID.
     container = self.createContainer(client)
     report('Starting container ' + container['Id'], component = self)
-    client.start(container)
+    client.start(container, binds=self.config.getBindings())
     
     # Health check until the instance is ready.    
     report('Waiting for health checks...', component = self)
@@ -246,9 +246,12 @@ class Component(object):
     if not command:
       fail('No command defined in either gantry config or docker image for component ' + self.getName(), component = self)
     
-    self.logger.debug('Starting container for component %s with command %s', self.getName(), command)
+    self.logger.debug('Starting container for component %s with command %s', self.getName(),
+                      command)
     container = client.create_container(self.config.getFullImage(), command,
-      user = self.config.getUser(), ports = [str(p) for p in self.config.getContainerPorts()])
+                                        user=self.config.getUser(),
+                                        volumes=self.config.getVolumes(),
+                                        ports=[str(p) for p in self.config.getContainerPorts()])
       
     return container
   

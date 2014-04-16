@@ -29,6 +29,15 @@ class _PortMapping(CFObject):
     super(_PortMapping, self).__init__('Port Mapping')
 
 
+class _VolumeBinding(CFObject):
+  """ A port mapping of an internal container port to the outside world. """
+  external = CFField('external')
+  volume = CFField('volume')
+
+  def __init__(self):
+    super(_VolumeBinding, self).__init__('Volume Binding')
+
+
 class _Component(CFObject):
   """ A single gantry component. """
   name = CFField('name')
@@ -37,6 +46,7 @@ class _Component(CFObject):
   command = CFField('command').list_of(str).default([])
   user = CFField('user').default('')
   ports = CFField('ports').list_of(_PortMapping)
+  bindings = CFField('bindings').list_of(_VolumeBinding)
   ready_checks = CFField('readyChecks').list_of(_HealthCheck).default([])
   health_checks = CFField('healthChecks').list_of(_HealthCheck).default([])
   ready_timeout = CFField('readyTimeout').kind(int).default(10000)
@@ -69,6 +79,14 @@ class _Component(CFObject):
   def getReadyCheckTimeout(self):
     """ Returns the maximum amount of time, in seconds, before ready checks time out. """
     return self.ready_timeout / 1000
+
+  def getVolumes(self):
+    """ Returns the volumes exposed by this component. """
+    return [binding.volume for binding in self.bindings]
+
+  def getBindings(self):
+    """ Returns the volumes exposed by this component. """
+    return {binding.external: binding.volume for binding in self.bindings}
 
 
 class Configuration(CFObject):
