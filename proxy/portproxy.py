@@ -12,6 +12,8 @@ HAPROXY_TEMPLATE = 'haproxy.tmpl'
 HAPROXY_PID_FILE = '/var/run/haproxy-private.pid'
 HAPROXY_CONFIG_FILE = 'haproxy.conf'
 
+CLOSE_WAIT = 'CLOSE_WAIT'
+
 class Proxy(object):
   def __init__(self):
     # Logging.
@@ -33,7 +35,7 @@ class Proxy(object):
     connections = []
     for proc in psutil.process_iter():
       if proc.is_running() and proc.name() == HAPROXY:
-        connections.extend(proc.get_connections())
+        connections.extend([conn for conn in proc.get_connections() if conn.status != CLOSE_WAIT])
         
     return connections
 
