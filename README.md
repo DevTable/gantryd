@@ -87,6 +87,7 @@ The configuration defines the various components of the project you want to mana
 | readyChecks  | The various checks to run to ensure the container is ready (see below for list)   |            |
 | healthChecks | The various checks to run to ensure the container is healthy (see below for list) |            |
 | bindings     | Mapping between external hosts paths and the corresponding container volumes      |            |
+| readyTimeout | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000     |
 
 
 ### Terminology
