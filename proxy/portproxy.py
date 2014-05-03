@@ -47,10 +47,6 @@ class Proxy(object):
     """ Adds a route to the proxy (but does not commit the changes). """
     self._port_routes[route.host_port] = route
 
-  def remove_route(self, route_id):
-    """ Removes a route from the proxy (but does not commit the changes). """
-    del self._port_routes[removed.host_port]
-
   def shutdown(self):
     """ Shuts down the proxy entirely. """
     subprocess.call('./shutdown-haproxy.sh', shell=True, close_fds=True)

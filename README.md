@@ -70,24 +70,32 @@ The configuration defines the various components of the project you want to mana
        ],
        "bindings": [
          { "external": "/an/external/path", "volume": "/some/container/path"}
+       ],
+       "defineComponentLinks": [
+         { "port": 8888, "name": "mycoolserver", "kind": "tcp" }
+       ],
+       "requireComponentLinks": [
+         { "name": "anotherserver", "alias": "serveralias" }
        ]
     }
   ]
 }
 ```
 
-| Field        | Description                                                                       | Default    |
-| ------------ | --------------------------------------------------------------------------------- | ---------- |
-| name         | The name of the component                                                         |            |
-| repo         | The docker to use for the component's image                                       |            |
-| tag          | The tag of the docker image to use                                                | latest     |
-| user         | The user under which to run the command in the container                          | (in image) |
-| command      | The command to run inside the container                                           | (in image) |
-| ports        | Mappings of container ports to external ports                                     |            |
-| readyChecks  | The various checks to run to ensure the container is ready (see below for list)   |            |
-| healthChecks | The various checks to run to ensure the container is healthy (see below for list) |            |
-| bindings     | Mapping between external hosts paths and the corresponding container volumes      |            |
-| readyTimeout | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000     |
+| Field                 | Description                                                                       | Default    |
+| --------------------- | --------------------------------------------------------------------------------- | ---------- |
+| name                  | The name of the component                                                         |            |
+| repo                  | The docker to use for the component's image                                       |            |
+| tag                   | The tag of the docker image to use                                                | latest     |
+| user                  | The user under which to run the command in the container                          | (in image) |
+| command               | The command to run inside the container                                           | (in image) |
+| ports                 | Mappings of container ports to external ports                                     |            |
+| readyChecks           | The various checks to run to ensure the container is ready (see below for list)   |            |
+| healthChecks          | The various checks to run to ensure the container is healthy (see below for list) |            |
+| bindings              | Mapping between external hosts paths and the corresponding container volumes      |            |
+| defineComponentLinks  | Defines the component links exported by this component                            |            |
+| requireComponentLinks | Defines the component links imported/required by this component                   |            |
+| readyTimeout          | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000     |
 
 
 ### Terminology
@@ -96,6 +104,20 @@ The configuration defines the various components of the project you want to mana
 when those components are running. For example: 'frontend', 'backend', 'someproduct'.
 
 **Component**: A named component that runs a specific docker image in a container. For example: 'elasticsearch', 'mongodb'.
+
+**Component Link**: Similar to a Docker link: An exposed port by one *component* that is imported by one or more other 
+components. Unlike a Docker link, a component link is managed by gantry and automatically updated via the proxy just link
+normal exposed ports. When a component link is required/imported by a container, the following environment variables are
+added into the containers for that component:
+
+| Environment Variable              | Example Name                        | Example Value                                     |
+| --------------------------------- | ----------------------------------- | ------------------------------------------------- |
+| {ALIAS}_CLINK                     | SERVERALIAS_CLINK                   | tcp://172.17.42.1:53852                           |
+| {ALIAS}_CLINK_{PORT}_{KIND}       | SERVERALIAS_CLINK_8888_TCP          | tcp://172.17.42.1:53852                           |
+| {ALIAS}_CLINK_{PORT}_{KIND}_PROTO | SERVERALIAS_CLINK_8888_TCP_PROTO    | tcp                                               |
+| {ALIAS}_CLINK_{PORT}_{KIND}_ADDR  | SERVERALIAS_CLINK_8888_TCP_ADDR     | 172.17.42.1                                       |
+| {ALIAS}_CLINK_{PORT}_{KIND}_PORT  | SERVERALIAS_CLINK_8888_TCP_PORT     | 53852                                             |
+
 
 ### Setting up a project
 

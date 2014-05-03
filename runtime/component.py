@@ -31,6 +31,10 @@ class Component(object):
   def getName(self):
     """ Returns the name of the component. """
     return self.config.name
+    
+  def lookupExportedComponentLink(self, link_name):
+    """ Looks up the exported component link with the given name and returns it or None if none. """
+    pass
   
   def isRunning(self):
     """ Returns whether this component has at least one running container. Note that
@@ -239,6 +243,42 @@ class Component(object):
         containers.append(container)
 
     return containers
+    
+  def calculateEnvForComponent(self):
+    """ Calculates the dict of environment variables for this component. """
+    links = self.config.getComponentLinks()
+    environment = {}
+
+    for link_alias, link_name in links.items():
+      component_link_info = self.manager.lookupComponentLink(link_name)
+      if not component_link_info:
+        fail('Component link %s not defined on any component' % link_name, component = self)
+        return None
+        
+      if not component_link_info.running:
+        info = (link_name, component_link_info.component.getName())
+        fail('Component link "%s" cannot be setup: Component "%s" is not running' % info, component = self)
+        return None
+        
+      # Component link env var format:
+      #   THEALIAS_CLINK=tcp://{hostip}:{hostport}
+      #   THEALIAS_CLINK_6379_TCP=tcp://{hostip}:{hostport}
+      #   THEALIAS_CLINK_6379_TCP_PROTO=tcp
+      #   THEALIAS_CLINK_6379_TCP_ADDR={hostip}
+      #   THEALIAS_CLINK_6379_TCP_PORT={hostport}
+        
+      prefix = link_alias.upper() + '_CLINK'
+      prefix_with_port = prefix + '_' + str(component_link_info.container_port)
+      full_prefix = prefix + '_HTTP' if component_link_info.kind == 'http' else '_TCP'
+      full_uri = component_link_info.kind + '://' + component_link_info.address + ':' + str(component_link_info.exposed_port)
+      
+      environment[prefix] = full_uri
+      environment[full_prefix] = full_uri
+      environment[full_prefix + '_PROTO'] = component_link_info.kind
+      environment[full_prefix + '_ADDR'] = component_link_info.address
+      environment[full_prefix + '_PORT'] = component_link_info.exposed_port
+    
+    return environment
       
   def createContainer(self, client):
     """ Creates a docker container for this component and returns it. """
@@ -251,7 +291,8 @@ class Component(object):
     container = client.create_container(self.config.getFullImage(), command,
                                         user=self.config.getUser(),
                                         volumes=self.config.getVolumes(),
-                                        ports=[str(p) for p in self.config.getContainerPorts()])
+                                        ports=[str(p) for p in self.config.getContainerPorts()],
+                                        environment=self.calculateEnvForComponent())
       
     return container
   

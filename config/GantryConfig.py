@@ -1,12 +1,14 @@
 from object import CFObject, CFField
-  
+from util import pickUnusedPort
+from runtime.metadata import getComponentField, setComponentField
+
 class _HealthCheck(CFObject):
   """ A single check to perform to verify that a component is ready to be
       pushed or is running properly.
   """
   kind = CFField('kind')
   id = CFField('id').default('')
-  timeout = CFField('timeout').kind(int).default(1)
+  timeout = CFField('timeout').kind(int).default(3)
 
   def __init__(self):
     super(_HealthCheck, self).__init__('Health Check')
@@ -38,6 +40,35 @@ class _VolumeBinding(CFObject):
     super(_VolumeBinding, self).__init__('Volume Binding')
 
 
+class _DefinedComponentLink(CFObject):
+  """ A network link exported by a component. """
+  port = CFField('port').kind(int)
+  name = CFField('name')
+  kind = CFField('kind').default('tcp')
+  
+  def __init__(self):
+    super(_DefinedComponentLink, self).__init__('Component Link')
+    
+  def getHostPort(self):
+    """ Returns the port used by the component link on the host. """
+    key = 'link-' + self.name + '-port'
+    port = getComponentField(self.parent.name, key, 0)
+    if not port:
+      port = pickUnusedPort()
+      setComponentField(self.parent.name, key, port)
+
+    return port
+    
+
+class _RequiredComponentLink(CFObject):
+  """ A network link required by a component. """
+  name = CFField('name')
+  alias = CFField('alias')
+  
+  def __init__(self):
+    super(_RequiredComponentLink, self).__init__('Required Component Link')
+
+
 class _Component(CFObject):
   """ A single gantry component. """
   name = CFField('name')
@@ -50,6 +81,8 @@ class _Component(CFObject):
   ready_checks = CFField('readyChecks').list_of(_HealthCheck).default([])
   health_checks = CFField('healthChecks').list_of(_HealthCheck).default([])
   ready_timeout = CFField('readyTimeout').kind(int).default(10000)
+  defined_component_links = CFField('defineComponentLinks').list_of(_DefinedComponentLink).default([])
+  required_component_links = CFField('requireComponentLinks').list_of(_RequiredComponentLink).default([])
     
   def __init__(self):
     super(_Component, self).__init__('Component')
@@ -73,8 +106,8 @@ class _Component(CFObject):
     return ' '.join(self.command)
   
   def getContainerPorts(self):
-    """ Returns the ports exposed by this component. """
-    return [p.container for p in self.ports]
+    """ Returns the full set of ports exposed by this component. """
+    return set([p.container for p in self.ports] + [l.port for l in self.defined_component_links])
     
   def getReadyCheckTimeout(self):
     """ Returns the maximum amount of time, in seconds, before ready checks time out. """
@@ -87,6 +120,14 @@ class _Component(CFObject):
   def getBindings(self):
     """ Returns the volumes exposed by this component. """
     return {binding.external: binding.volume for binding in self.bindings}
+
+  def getDefinedComponentLinks(self):
+    """ Returns the dict of defined components links. """
+    return {l.name: l for l in self.defined_component_links}
+    
+  def getComponentLinks(self):
+    """ Returns a dict of aliases for component links required, with the values being the links' names. """
+    return {l.alias: l.name for l in self.required_component_links}
 
 
 class Configuration(CFObject):

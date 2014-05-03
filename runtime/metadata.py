@@ -47,12 +47,18 @@ def getGantryMetadata():
       metadata_json = None
 
   # Parse it as JSON.
-  metadata = {'containers': {}}
+  metadata = {'containers': {}, 'components': {}}
   if metadata_json:
     try:
       metadata = json.loads(metadata_json)
     except:
       pass
+  
+  if not 'containers' in metadata:
+    metadata['containers'] = {}
+
+  if not 'components' in metadata:
+    metadata['components'] = {}
   
   return metadata
 
@@ -64,7 +70,10 @@ def saveGantryMetadata(metadata):
   metadata_json = json.dumps(metadata)
   with open(GANTRY_METADATA_FILE, 'w') as f:
     f.write(metadata_json)
-    
+  
+  
+#########################################################################
+
 def getContainerMetadata(container):
   """ Returns the internal metadata object for the container. """
   id = container['Id'][0:12] # Running container IDs are longer.
@@ -104,4 +113,29 @@ def setContainerField(container, field, value):
   info = getContainerMetadata(container)
   info[field] = value
   setContainerMetadata(container, info)
+
+
+#########################################################################
+
+def getComponentMetadata(component_name):
+  """ Returns the internal metadata object for the component. """  
+  metadata = getGantryMetadata()  
+  components = metadata['components']
+  return components.get(component_name, {})
+
+def setComponentMetadata(component_name, info):
+  """ Sets the internal metadata object for the component. """  
+  metadata = getGantryMetadata()
+  metadata['components'][component_name] = info
+  saveGantryMetadata(metadata)
+
+def getComponentField(component_name, field, default):
+  """ Returns the metadata field for the given component or the default value. """
+  info = getComponentMetadata(component_name)
+  return info.get(field, default)
   
+def setComponentField(component_name, field, value):
+  """ Sets the metadata field for the given component. """
+  info = getComponentMetadata(component_name)
+  info[field] = value
+  setComponentMetadata(component_name, info)

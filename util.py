@@ -1,5 +1,7 @@
 import docker
 import datetime
+import socket
+
 from termcolor import colored, cprint
 
 def enum(*sequential, **named):
@@ -10,6 +12,13 @@ def enum(*sequential, **named):
 ReportLevels = enum(BACKGROUND = -2, EXTRA = -1, NORMAL = 0, IMPORTANT = 1)
 
 client = docker.Client()
+
+def pickUnusedPort():
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.bind(('localhost', 0))
+  addr, port = s.getsockname()
+  s.close()
+  return port
 
 def report(msg, level = ReportLevels.NORMAL, project = None, component = None):
   """ Reports a message to the console. """

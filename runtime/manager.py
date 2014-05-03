@@ -12,6 +12,41 @@ import time
 import logging
 import containerutil
 
+class ComponentLinkInformation(object):
+  """ Helper class which contains all runtime information about a component link. """
+  def __init__(self, manager, component, link_config):
+    # The component that exports the link.
+    self.component = component
+    
+    # The configuration for the component link.
+    self.link_config = link_config
+    
+    # The kind of the link.
+    self.kind = 'http' if link_config.kind.lower() == 'http' else 'tcp'
+    
+    # The port of the link inside the running container.
+    self.container_port = link_config.port
+
+    # The address of the link under the proxy (None if the link is not running).
+    self.address = None
+    
+    # The port of the link under the proxy (None if the link is not running).
+    self.exposed_port = None
+    
+    # Whether the link is currently running.
+    self.running = False
+    
+    # Lookup the runtime information for the link.
+    client = getDockerClient()
+    container = component.getPrimaryContainer()
+    if container:
+      container_ip = containerutil.getContainerIPAddress(client, container)
+      
+      self.address = client.inspect_container(container)['NetworkSettings']['Gateway'] # The host's IP address.
+      self.exposed_port = link_config.getHostPort()
+      self.running = True
+      
+
 class RuntimeManager(object):
   """ Manager class which handles tracking of all the components and other runtime
       information.
@@ -56,6 +91,15 @@ class RuntimeManager(object):
       return None
       
     return self.components[name]
+    
+  def lookupComponentLink(self, link_name):
+    """ Looks up the component link with the given name defined or None if none. """
+    for component_name, component in self.components.items():
+      defined_links = component.config.getDefinedComponentLinks()
+      if link_name in defined_links:
+        return ComponentLinkInformation(self, component, defined_links[link_name])
+        
+    return None
 
   def adjustForUpdatingComponent(self, component, started_container):
     """ Adjusts the runtime for a component which has been started in the given
@@ -168,9 +212,16 @@ class RuntimeManager(object):
         if getContainerStatus(container) != 'draining':
           container_ip = containerutil.getContainerIPAddress(client, container)
           starting_containers.append(container)
+          
+          # Add the normal exposed ports.
           for mapping in component.config.ports:
             route = Route(mapping.kind == 'http', mapping.external, container_ip,
                           mapping.container)
+            self.proxy.add_route(route)
+            
+          # Add the container link ports.
+          for link in component.config.defined_component_links:
+            route = Route(link.kind == 'http', link.getHostPort(), container_ip, link.port)
             self.proxy.add_route(route)
         else:
           draining_containers.append(container)
