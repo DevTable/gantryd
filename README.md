@@ -113,10 +113,10 @@ added into the containers for that component:
 | Environment Variable              | Example Name                        | Example Value                                     |
 | --------------------------------- | ----------------------------------- | ------------------------------------------------- |
 | {ALIAS}_CLINK                     | SERVERALIAS_CLINK                   | tcp://172.17.42.1:53852                           |
-| {ALIAS}_CLINK_{PORT}_{KIND}       | SERVERALIAS_CLINK_8888_TCP          | tcp://172.17.42.1:53852                           |
-| {ALIAS}_CLINK_{PORT}_{KIND}_PROTO | SERVERALIAS_CLINK_8888_TCP_PROTO    | tcp                                               |
-| {ALIAS}_CLINK_{PORT}_{KIND}_ADDR  | SERVERALIAS_CLINK_8888_TCP_ADDR     | 172.17.42.1                                       |
-| {ALIAS}_CLINK_{PORT}_{KIND}_PORT  | SERVERALIAS_CLINK_8888_TCP_PORT     | 53852                                             |
+| {ALIAS}\_CLINK\_{PORT}\_{KIND}       | SERVERALIAS_CLINK_8888_TCP          | tcp://172.17.42.1:53852                           |
+| {ALIAS}\_CLINK\_{PORT}\_{KIND}\_PROTO | SERVERALIAS_CLINK_8888_TCP_PROTO    | tcp                                               |
+| {ALIAS}\_CLINK\_{PORT}\_{KIND}\_ADDR  | SERVERALIAS_CLINK_8888_TCP_ADDR     | 172.17.42.1                                       |
+| {ALIAS}\_CLINK\_{PORT}\_{KIND}\_PORT  | SERVERALIAS_CLINK_8888_TCP_PORT     | 53852                                             |
 
 
 ### Setting up a project
