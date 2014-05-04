@@ -13,14 +13,15 @@ class TcpCheck(HealthCheck):
   def run(self, container, report):
     container_port = self.config.getExtraField('port')
     container_ip = self.getContainerIPAddress(container)
-    
+
     report('Checking TCP port in container ' + container['Id'][0:12] + ': ' + str(container_port),
       level = ReportLevels.EXTRA)
     try:
       sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-      sock.connect(container_ip, container_port)
+      sock.connect((container_ip, container_port))
       sock.close()
-    except:
+    except Exception as e:
+      print e
       return False
       
     return True

@@ -269,7 +269,7 @@ class Component(object):
         
       prefix = link_alias.upper() + '_CLINK'
       prefix_with_port = prefix + '_' + str(component_link_info.container_port)
-      full_prefix = prefix + '_HTTP' if component_link_info.kind == 'http' else '_TCP'
+      full_prefix = prefix_with_port + ('_HTTP' if component_link_info.kind == 'http' else '_TCP')
       full_uri = component_link_info.kind + '://' + component_link_info.address + ':' + str(component_link_info.exposed_port)
       
       environment[prefix] = full_uri
