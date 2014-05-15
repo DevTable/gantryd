@@ -2,3 +2,5 @@
 gantry.xml
 *.pyc
 venv
+haproxy.conf
+.gantry_metadata
