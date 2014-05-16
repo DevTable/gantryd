@@ -22,7 +22,7 @@ class _HealthCheck(CFObject):
 
 
 class _TerminationSignal(CFObject):
-  """ A single signal is sent to a component when the component should shut
+  """ A single signal that is sent to a component when the component should shut
       itself down.
   """
   kind = CFField('kind')
