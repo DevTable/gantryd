@@ -1,141 +1,191 @@
 import docker
 import json
 
+from peewee import (Model, SqliteDatabase, ForeignKeyField, CharField, OperationalError,
+                    sort_models_topologically, DoesNotExist)
+from functools import wraps
+
 GANTRY_METADATA_FILE = '.gantry_metadata'
 cached_metadata = None
 
+
+db = SqliteDatabase(GANTRY_METADATA_FILE)
+
+
+class BaseModel(Model):
+  class Meta:
+    database = db
+
+
+class Component(BaseModel):
+  name = CharField(index=True)
+
+
+class ComponentField(BaseModel):
+  component = ForeignKeyField(Component)
+  key = CharField(index=True)
+  value = CharField()
+
+
+class Container(BaseModel):
+  docker_id = CharField(index=True)
+  component = ForeignKeyField(Component, null=True)
+
+
+class ContainerField(BaseModel):
+  container = ForeignKeyField(Container)
+  key = CharField(index=True)
+  value = CharField()
+
+  class Meta:
+    database = db
+    indexes = (
+      # A team name must be unique within an organization
+      (('container', 'key'), True),
+    )
+
+
+all_models = [Component, ComponentField, Container, ContainerField]
+
+
+def _initialze_db():
+  for model in sort_models_topologically(all_models):
+    try:
+      model.select().get()
+    except OperationalError as exc:
+      model.create_table()
+    except DoesNotExist:
+      pass
+
+
+def db_access(to_wrap):
+  @wraps(to_wrap)
+  def wrapper(*args, **kwargs):
+    _initialze_db()
+
+    try:
+      return to_wrap(*args, **kwargs)
+    finally:
+      if not db.is_closed():
+        db.close()
+
+  return wrapper
+
+
 def getContainerStatus(container):
   """ Returns the status code of the given container. """
-  return getContainerField(container, 'status', default = 'unknown')
+  return _getContainerField(container, 'status', default = 'unknown')
+
 
 def setContainerStatus(container, status):
   """ Sets the status code for the given container. """
-  setContainerField(container, 'status', status)    
+  _setContainerField(container, 'status', status)    
 
-def getContainerComponent(container):
+
+@db_access
+def getContainerComponent(container_id):
   """ Returns the component that owns the given container. """
-  return getContainerField(container, 'component', default = 'unknown')
+  container = _upsertContainerRecord(container_id)
+  return container.component and container.component.name
 
-def setContainerComponent(container, component):
+
+@db_access
+def setContainerComponent(container_id, component_name):
   """ Sets the component code for the given container. """
-  setContainerField(container, 'component', component)    
+  component = _upsertComponentRecord(component_name)
+  container = _upsertContainerRecord(container_id)
+  container.component = component
+  container.save()
 
+
+def _getContainerId(container_or_id):
+  return container_or_id['Id'] if isinstance(container_or_id, dict) else container_or_id
+
+
+@db_access
 def removeContainerMetadata(container):
-  """ Removes all internal metadata for the container. """
-  id = container['Id'][0:12] # Running container IDs are longer.
-  metadata = getGantryMetadata()
-  containers = metadata['containers']
-
-  if id in containers:
-    del containers[id]
-    saveGantryMetadata(metadata)
+  container_id = _getContainerId(container)
+  found = _upsertContainerRecord(container_id)
+  found.delete_instance(recursive=True)
 
 
-#########################################################################
-
-def getGantryMetadata():
-  """ Attempts to load the full metadata file. If none found, returns a new empty metadata
-      dict.
-  """
-  if cached_metadata:
-    return cached_metadata
-    
+def _getContainerFieldRecord(container, field):
   try:
-    with open(GANTRY_METADATA_FILE, 'r') as f:
-      metadata_json = f.read()
-  except IOError:
-      metadata_json = None
+    return (ContainerField
+      .select()
+      .join(Container)
+      .where(Container.docker_id == container, ContainerField.key == field)
+      .get())
+  except ContainerField.DoesNotExist:
+    return None
 
-  # Parse it as JSON.
-  metadata = {'containers': {}, 'components': {}}
-  if metadata_json:
-    try:
-      metadata = json.loads(metadata_json)
-    except:
-      pass
-  
-  if not 'containers' in metadata:
-    metadata['containers'] = {}
 
-  if not 'components' in metadata:
-    metadata['components'] = {}
-  
-  return metadata
+def _upsertContainerRecord(container):
+  try:
+    return (Container
+      .select()
+      .where(Container.docker_id == container)
+      .get())
+  except Container.DoesNotExist:
+    return Container.create(docker_id=container)
 
-def saveGantryMetadata(metadata):
-  """ Saves the given metadata to the metadata file. """
-  cached_metadata = metadata
-  
-  # Create the JSON form of the information.
-  metadata_json = json.dumps(metadata)
-  with open(GANTRY_METADATA_FILE, 'w') as f:
-    f.write(metadata_json)
-  
-  
-#########################################################################
 
-def getContainerMetadata(container):
-  """ Returns the internal metadata object for the container. """
-  id = container['Id'][0:12] # Running container IDs are longer.
-  
-  # Load the metadata.
-  metadata = getGantryMetadata()
-  
-  # Find the information for the container with the given ID.
-  containers = metadata['containers']
-  if not id in containers:
-    return {}
-    
-  return containers[id]
-
-def setContainerMetadata(container, info):
-  """ Sets the internal metadata object for the container. """
-  
-  # Load the metadata.
-  metadata = getGantryMetadata()
-
-  # Update the metadata for the container.
-  id = container['Id'][0:12] # Running container IDs are longer.
-  metadata['containers'][id] = info
-
-  # Save the metadata.
-  saveGantryMetadata(metadata)
-
-def getContainerField(container, field, default):
+@db_access
+def _getContainerField(container, field, default):
   """ Returns the metadata field for the given container or the default value. """
-  info = getContainerMetadata(container)
-  if not field in info:
-    return default
-  return info[field]
-  
-def setContainerField(container, field, value):
+  container_id = _getContainerId(container)
+  found = _getContainerFieldRecord(container_id, field)
+  return found.value if found else default
+
+
+@db_access  
+def _setContainerField(container, field, value):
   """ Sets the metadata field for the given container. """
-  info = getContainerMetadata(container)
-  info[field] = value
-  setContainerMetadata(container, info)
+  container_id = _getContainerId(container)
+  found = _getContainerFieldRecord(container_id, field)
+  if found is not None:
+    found.value = value
+    found.save()
+  else:
+    container_record = _upsertContainerRecord(container_id)
+    ContainerField.create(container=container_record, key=field, value=value)
 
 
-#########################################################################
+def _upsertComponentRecord(component):
+  try:
+    return (Component
+      .select()
+      .where(Component.name == component)
+      .get())
+  except Component.DoesNotExist:
+    return Component.create(name=component)
 
-def getComponentMetadata(component_name):
-  """ Returns the internal metadata object for the component. """  
-  metadata = getGantryMetadata()  
-  components = metadata['components']
-  return components.get(component_name, {})
 
-def setComponentMetadata(component_name, info):
-  """ Sets the internal metadata object for the component. """  
-  metadata = getGantryMetadata()
-  metadata['components'][component_name] = info
-  saveGantryMetadata(metadata)
+def _getComponentFieldRecord(component_name, field):
+  try:
+    return (ComponentField
+      .select()
+      .join(Component)
+      .where(Component.name == component_name, ComponentField.key == field)
+      .get())
+  except ComponentField.DoesNotExist:
+    return None
 
+
+@db_access
 def getComponentField(component_name, field, default):
   """ Returns the metadata field for the given component or the default value. """
-  info = getComponentMetadata(component_name)
-  return info.get(field, default)
+  found = _getComponentFieldRecord(component_name, field)
+  return found.value if found else default
   
+
+@db_access
 def setComponentField(component_name, field, value):
   """ Sets the metadata field for the given component. """
-  info = getComponentMetadata(component_name)
-  info[field] = value
-  setComponentMetadata(component_name, info)
+  found = _getComponentFieldRecord(component_name, field)
+  if found is not None:
+    found.value = value
+    found.save()
+  else:
+    component = _upsertComponentRecord(component_name)
+    ComponentField.create(component=component, key=field, value=value)
