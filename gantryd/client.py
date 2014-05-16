@@ -74,9 +74,9 @@ class GantryDClient(object):
     self.logger.debug('Updating configuration for project %s', self.project_name)
     self.etcd_client.set(getProjectConfigPath(self.project_name), config_json)
     
-  def stopComponents(self, componentNames):
+  def stopComponents(self, component_names):
     """ Tells all the given components on all systems to stop. """
-    self.initialize(componentNames)
+    self.initialize(component_names)
 
     report('Marking components as stopped', project = self.project_name)
     for component in self.components:
@@ -85,9 +85,9 @@ class GantryDClient(object):
       state = ComponentState(self.project_name, component, self.etcd_client)
       state.setStatus(STOPPED_STATUS)
 
-  def killComponents(self, componentNames):
+  def killComponents(self, component_names):
     """ Tells all the given components on all systems to die. """
-    self.initialize(componentNames)
+    self.initialize(component_names)
 
     report('Marking components as killed', project = self.project_name)
     for component in self.components:
@@ -96,9 +96,9 @@ class GantryDClient(object):
       state = ComponentState(self.project_name, component, self.etcd_client)
       state.setStatus(KILLED_STATUS)
     
-  def markUpdated(self, componentNames):
+  def markUpdated(self, component_names):
     """ Tells all the given components to update themselves. """
-    self.initialize(componentNames)
+    self.initialize(component_names)
 
     report('Updating the image IDs on components', project = self.project_name)
     for component in self.components:
@@ -122,9 +122,9 @@ class GantryDClient(object):
       print "%-20s %-20s %-20s" % (component.getName(), status, imageid)
       
     
-  def run(self, componentNames):
+  def run(self, component_names):
     """ Runs the given components on this machine. """
-    self.initialize(componentNames)
+    self.initialize(component_names)
  
     # Register a handler to remove this machine from the list when the daemon is
     # shutdown. The controller will also occasionally ping a machine to verify it
@@ -149,19 +149,19 @@ class GantryDClient(object):
 
   ########################################################################
   
-  def initialize(self, componentNames):
+  def initialize(self, component_names):
     """ Initializes this client for working with the components given. """
     # Load the project configuration.
     self.getConfig()
       
     # Initialize the runtime manager.
-    self.runtime_manager = RuntimeManager(self.config, daemon_mode = True)
+    self.runtime_manager = RuntimeManager(self.config)
     
     # Find all the components for this machine.
-    for componentName in componentNames:
-      component = self.runtime_manager.getComponent(componentName)
+    for component_name in component_names:
+      component = self.runtime_manager.getComponent(component_name)
       if not component:
-        fail('Unknown component named ' + componentName, project = self.project_name)
+        fail('Unknown component named ' + component_name, project=self.project_name)
         
       self.components.append(component)
 
@@ -171,6 +171,11 @@ class GantryDClient(object):
     try:
       machine_state = MachineState(self.project_name, self.machine_id, self.etcd_client)
       machine_state.removeMachine()
+
+      # Shut down the runtime manager if we have one
+      if self.runtime_manager is not None:
+        self.runtime_manager.join()
+
     except Exception as e:
       self.logger.exception(e)
       pass
@@ -186,7 +191,7 @@ class GantryDClient(object):
       # Perform the update.
       self.logger.debug('Reporting status for machine %s to etcd', self.machine_id)
       machine_state = MachineState(self.project_name, self.machine_id, self.etcd_client)
-      machine_state.registerMachine([c.getName() for c in self.components], ttl = REPORT_TTL)
+      machine_state.registerMachine([c.getName() for c in self.components], ttl=REPORT_TTL)
       
       # Sleep for the TTL minus a few seconds.
       time.sleep(REPORT_TTL - 5)
