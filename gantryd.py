@@ -17,11 +17,11 @@ def getconfig(dclient, args):
     config = dclient.getConfigJSON()
   except:
     pass
-    
+
   if not config:
     print 'No config found'
     return
-  
+
   print json.dumps(json.loads(config), sort_keys=True, indent=2, separators=(',', ': '))
 
 def setconfig(dclient, args):
@@ -29,7 +29,7 @@ def setconfig(dclient, args):
   if not args.configfile:
     print 'Missing configfile parameter'
     return
-    
+
   with open(args.configfile, 'r') as f:
     dclient.setConfig(json.loads(f.read()))
     print 'Configuration updated'
@@ -60,24 +60,24 @@ ACTIONS = {
   'kill': kill
 }
 
-def start():  
+def start():
   # Setup the gantryd arguments.
   parser = argparse.ArgumentParser(description='gantry continuous deployment system daemon')
-  parser.add_argument('action', help = 'The action to perform', choices = ACTIONS.keys())
-  parser.add_argument('project', help = 'The name of the project containing the components')
-  parser.add_argument('configfile', help = 'The name of the config file. Only applies to setconfig.', nargs='?')
-  parser.add_argument('-c', help = 'A component to watch and run', nargs='+', type=str, dest='component')
-  parser.add_argument('-etcd', help = 'The etcd endpoint to which the client should connect. Defaults to 127.0.0.1:4001', dest='etcd_host', nargs='?', const=ETCD_HOST)
+  parser.add_argument('action', help='The action to perform', choices=ACTIONS.keys())
+  parser.add_argument('project', help='The name of the project containing the components')
+  parser.add_argument('configfile', help='The name of the config file. Only applies to setconfig.', nargs='?')
+  parser.add_argument('-c', help='A component to watch and run', nargs='+', type=str, dest='component')
+  parser.add_argument('-etcd', help='The etcd endpoint to which the client should connect. Defaults to 127.0.0.1:4001', dest='etcd_host', nargs='?', const=ETCD_HOST)
 
-  # Parse the arguments.  
+  # Parse the arguments.
   args = parser.parse_args()
 
   # Initialize the gantryd client.
-  dclient = GantryDClient(args.etcd_host or ETCD_HOST, args.project)  
+  dclient = GantryDClient(args.etcd_host or ETCD_HOST, args.project)
 
   # Run the action.
   action = ACTIONS[args.action]
   action(dclient, args)
 
 if __name__ == "__main__":
-   start()
+  start()

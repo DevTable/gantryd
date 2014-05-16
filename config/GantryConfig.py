@@ -12,12 +12,12 @@ class _HealthCheck(CFObject):
 
   def __init__(self):
     super(_HealthCheck, self).__init__('Health Check')
-    
+
   def getTitle(self):
     """ Returns a descriptive title for the check. """
     if self.id != '':
       return self.id
-    
+
     return self.kind
 
 
@@ -31,15 +31,15 @@ class _TerminationSignal(CFObject):
 
   def __init__(self):
     super(_TerminationSignal, self).__init__('Termination Signal')
-    
+
   def getTitle(self):
     """ Returns a descriptive title for the check. """
     if self.id != '':
       return self.id
-    
+
     return self.kind
-    
-    
+
+
 class _PortMapping(CFObject):
   """ A port mapping of an internal container port to the outside world. """
   external = CFField('external').kind(int)
@@ -64,10 +64,10 @@ class _DefinedComponentLink(CFObject):
   port = CFField('port').kind(int)
   name = CFField('name')
   kind = CFField('kind').default('tcp')
-  
+
   def __init__(self):
     super(_DefinedComponentLink, self).__init__('Component Link')
-    
+
   def getHostPort(self):
     """ Returns the port used by the component link on the host. """
     key = 'link-' + self.name + '-port'
@@ -77,13 +77,13 @@ class _DefinedComponentLink(CFObject):
       setComponentField(self.parent.name, key, port)
 
     return port
-    
+
 
 class _RequiredComponentLink(CFObject):
   """ A network link required by a component. """
   name = CFField('name')
   alias = CFField('alias')
-  
+
   def __init__(self):
     super(_RequiredComponentLink, self).__init__('Required Component Link')
 
@@ -104,7 +104,7 @@ class _Component(CFObject):
   privileged = CFField('privileged').kind(bool).default(False)
   defined_component_links = CFField('defineComponentLinks').list_of(_DefinedComponentLink).default([])
   required_component_links = CFField('requireComponentLinks').list_of(_RequiredComponentLink).default([])
-    
+
   connection_check = _HealthCheck().build({'kind': 'connection'})
   termination_checks = CFField('terminationChecks').list_of(_HealthCheck).default([connection_check])
 
@@ -114,25 +114,25 @@ class _Component(CFObject):
   def getFullImage(self):
     """ Returns the full image ID for this component, of the form 'repo:tag' """
     return self.repo + ':' + self.tag
-    
+
   def getUser(self):
     """ Returns the user under which to run the container or None if none. """
     if not self.user:
       return None
-      
+
     return self.user
-    
+
   def getCommand(self):
     """ Returns the command string to run on component startup or None if none. """
     if not self.command:
       return None
-      
+
     return ' '.join(self.command)
-  
+
   def getContainerPorts(self):
     """ Returns the full set of ports exposed by this component. """
     return set([p.container for p in self.ports] + [l.port for l in self.defined_component_links])
-    
+
   def getReadyCheckTimeout(self):
     """ Returns the maximum amount of time, in seconds, before ready checks time out. """
     return self.ready_timeout / 1000
@@ -148,7 +148,7 @@ class _Component(CFObject):
   def getDefinedComponentLinks(self):
     """ Returns the dict of defined components links. """
     return {l.name: l for l in self.defined_component_links}
-    
+
   def getComponentLinks(self):
     """ Returns a dict of aliases for component links required, with the values being the links' names. """
     return {l.alias: l.name for l in self.required_component_links}
@@ -157,14 +157,14 @@ class _Component(CFObject):
 class Configuration(CFObject):
   """ The overall gantry configuration. """
   components = CFField('components').list_of(_Component)
-  
+
   def __init__(self):
     super(Configuration, self).__init__('Configuration')
-    
+
   def lookupComponent(self, name):
-    """ Looks up the component with the given name under this config. """    
+    """ Looks up the component with the given name under this config. """
     for component in self.components:
       if component.name == name:
         return component
-    
+
     return None

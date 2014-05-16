@@ -25,7 +25,7 @@ class TerminationSignal(ContainerSignal):
 
 
 class HealthCheck(ContainerSignal):
-  """ Base class for all health checks. """  
+  """ Base class for all health checks. """
   def run(self, container, report):
     """ Runs the given health check on the given container, returning True if it succeeds and
         false otherwise.

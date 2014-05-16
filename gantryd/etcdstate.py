@@ -11,7 +11,7 @@ class EtcdState(object):
     # Logging.
     self.logger = logging.getLogger(__name__)
 
-  def getState(self, default = {}):
+  def getState(self, default={}):
     """ Gets the state. """
     try:
       self.logger.debug('Looking up etcd path: %s', self.state_path)
@@ -21,7 +21,7 @@ class EtcdState(object):
     except ValueError as v:
       self.logger.exception(v)
       pass
-      
+
     return default
 
   def replaceState(self, previous_state, new_state):
@@ -30,26 +30,25 @@ class EtcdState(object):
     """
     try:
       self.logger.debug('Test and set replacing etcd path: %s', self.state_path)
-      original_contents_json = json.dumps(previous_state, separators=(',',':'))
-      new_contents_json = json.dumps(new_state, separators=(',',':'))
+      original_contents_json = json.dumps(previous_state, separators=(',', ':'))
+      new_contents_json = json.dumps(new_state, separators=(',', ':'))
       self.etcd_client.test_and_set(self.state_path, new_contents_json, original_contents_json)
     except ValueError as e:
       self.logger.debug('Test and set replacment for etcd path %s failed', self.state_path)
       return None
-    
+
     return new_state
 
   def buildAndSetState(self, **kwargs):
     """ Builds state from the given args and sets the state. """
     state_obj = dict(kwargs)
     self.setState(state_obj)
-    
-  def setState(self, state_obj = {}, ttl = None):
+
+  def setState(self, state_obj={}, ttl=None):
     """ Sets the state to the given object. """
-    self.etcd_client.set(self.state_path, json.dumps(state_obj, separators=(',',':')), ttl = ttl)
-    
+    self.etcd_client.set(self.state_path, json.dumps(state_obj, separators=(',', ':')), ttl=ttl)
+
   def deleteState(self):
     """ Deletes the state. """
     self.etcd_client.delete()
 
-  

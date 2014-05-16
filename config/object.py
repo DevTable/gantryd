@@ -6,44 +6,44 @@ class ConfigParseException(Exception):
     pass
 
 class CFObject(object):
-  """ 
+  """
     Defines a class in which all fields marked with the CFField are automatically handled
     for configuration purposes.
-  """  
+  """
   def __init__(self, name):
     # The parent of the object.
     self.parent = None
-    
+
     # The name of the object.
     self.name = name
-    
+
     # The cached fields for the object.
     self.fields = None
-    
+
     # The "extra" fields on the object, if any.
     self.extra_fields = {}
-  
+
   def hasExtraField(self, name):
     """ Returns true if there is an 'extra' field with the given name. """
     return name in self.extra_fields
-  
+
   def getExtraField(self, name):
     """ Returns the 'extra' field with this name. """
     return self.extra_fields[name]
-  
+
   def getRootConfig(self):
     """ Returns the root configuration object. """
     if self.parent:
       return self.parent
-      
+
     return self
-  
+
   @classmethod
   def parse(cls, json_data):
     """ Parses the given JSON data into an instance of this config object. """
     dictionary = json.loads(json_data)
     return cls.build(dictionary)
-    
+
   @classmethod
   def build(cls, dictionary):
     """ Builds an instance of this config object from the given dictionary. """
@@ -52,7 +52,7 @@ class CFObject(object):
     for name in instance.get_fields():
       if name in instance.extra_fields:
          del instance.extra_fields[name]
-        
+
       field = instance.get_fields()[name]
       if field.is_required() and not name in dictionary:
         raise ConfigParseException('Missing required property ' + name + ' under object ' + instance.name)
@@ -60,14 +60,14 @@ class CFObject(object):
       if name in dictionary:
         field.populate(instance, dictionary[name])
 
-    return instance      
+    return instance
 
   def get_fields(self):
     """ Returns a dictionary of all CFField's defined in the CFObject """
     # Check the field cache first
     if self.fields:
       return self.fields
-    
+
     fields = {}
     class_fields = dir(self.__class__)
     class_dict = self.__class__.__dict__
@@ -89,22 +89,22 @@ class CFField(object):
 
     # The current value of the field.
     self.value = None
-    
+
     # The type of the field. Defaults to string.
     self.field_kind = str
-    
+
     # If this field is a list, the kind of its elements.
     self.list_kind = None
-    
+
     # The default value for the field. If none, the field is required.
     self.default_value = None
-    
+
   def __get__(self, instance, owner):
     return self.get_value(instance)
 
   def __set__(self, instance, value):
     self.update(instance, value)
-        
+
   def kind(self, kind):
     """ Sets the kind of the field. """
     self.field_kind = kind
@@ -127,38 +127,38 @@ class CFField(object):
   def get_name(self):
     """ Returns the name of the field """
     return self.name
-    
+
   def populate(self, instance, primitive):
     """ Attempts to populate this list from the given primitive value. """
     if self.field_kind == list:
       if not isinstance(primitive, list):
         raise ConfigParseException('Expected list for field ' + self.name)
-      
+
       list_value = []
       for p in primitive:
         c_value = self.get_converted_value(instance, p, self.list_kind)
         if not isinstance(c_value, self.list_kind):
           raise ConfigParseException('Expected items of kind ' + str(self.list_kind) + ' in ' + self.name)
         list_value.append(c_value)
-        
+
       self.update(instance, list_value)
       return
-      
+
     self.update(instance, self.get_converted_value(instance, primitive, self.field_kind))
-  
-  def get_converted_value(self, instance, primitive, kind):      
+
+  def get_converted_value(self, instance, primitive, kind):
     # Class types.
     if issubclass(kind, CFObject):
       if not isinstance(primitive, dict):
         raise ConfigParseException('Expected dictionary for field ' + self.name)
-      
+
       built = kind.build(primitive)
       built.parent = instance;
       return built
-      
+
     # Otherwise, convert to from a string.
     return kind(primitive)
-    
+
   def internal_data(self, instance):
     internal_name = self.name + '_data'
     if internal_name not in instance.__dict__:
@@ -170,13 +170,13 @@ class CFField(object):
     value = self.internal_data(instance)['data'];
     if value is None and self.default_value is not None:
       return self.default_value
-      
+
     return value
 
   def set_value(self, instance, value):
     """ Sets the value of the field for the given instance """
     self.__set__(instance, value)
-    
+
   def update(self, instance, value):
     """ Updates the value of the field """
     self.internal_data(instance)['data'] = value

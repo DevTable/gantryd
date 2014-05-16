@@ -13,7 +13,7 @@ def getMachineStatePath(projectName, machineId):
   """ Returns the path for this machine in the etcd config for the project. """
   # gantryd/projects/{project}/machines/{machineid}/state
   return buildPath(PROJECT_NAMESPACE, projectName, MACHINES_NAMESPACE, machineId, STATE_FILE)
-    
+
 def getProjectConfigPath(projectName):
   """ Returns the path for this project's config in the etcd config. """
   # gantryd/projects/{project}/config

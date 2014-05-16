@@ -74,12 +74,12 @@ def db_access(to_wrap):
 
 def getContainerStatus(container):
   """ Returns the status code of the given container. """
-  return _getContainerField(container, 'status', default = 'unknown')
+  return _getContainerField(container, 'status', default='unknown')
 
 
 def setContainerStatus(container, status):
   """ Sets the status code for the given container. """
-  _setContainerField(container, 'status', status)    
+  _setContainerField(container, 'status', status)
 
 
 @db_access
@@ -138,7 +138,7 @@ def _getContainerField(container, field, default):
   return found.value if found else default
 
 
-@db_access  
+@db_access
 def _setContainerField(container, field, value):
   """ Sets the metadata field for the given container. """
   container_id = _getContainerId(container)
@@ -177,7 +177,7 @@ def getComponentField(component_name, field, default):
   """ Returns the metadata field for the given component or the default value. """
   found = _getComponentFieldRecord(component_name, field)
   return found.value if found else default
-  
+
 
 @db_access
 def setComponentField(component_name, field, value):

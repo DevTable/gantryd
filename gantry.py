@@ -27,24 +27,24 @@ def loadConfig(config_file):
   except:
     print 'Could not find config file: ' + config_file
     return None
-    
+
   try:
     return Configuration.parse(config_json)
   except Exception as e:
     print 'Error parsing gantry config: ' + str(e)
     return None
-    
+
 
 def monitor(component):
   while True:
     # Sleep for 30 seconds.
     time.sleep(30)
-    
+
     # Conduct the checks.
     report('Checking in on component ' + component.getName())
     if not component.isHealthy():
       report('Component ' + component.getName() + ' is not healthy. Killing and restarting')
-      component.stop(kill = True)
+      component.stop(kill=True)
       if not component.update():
         report('Could not restart component ' + component.getName())
         return
@@ -53,25 +53,25 @@ def monitor(component):
 def run():
   # Setup the gantry arguments
   parser = argparse.ArgumentParser(description='gantry continuous deployment system')
-  parser.add_argument('config_file', help = 'The configuration file')
-  parser.add_argument('action', help = 'The action to perform', choices = ACTIONS.keys())
-  parser.add_argument('component_name', help = 'The name of the component to manage')
-  parser.add_argument('-m', dest='monitor', action='store_true', help = 'If specified and the action is "start" or "update", gantry will remain running to monitor components, auto restarting them as necessary')
-  
+  parser.add_argument('config_file', help='The configuration file')
+  parser.add_argument('action', help='The action to perform', choices=ACTIONS.keys())
+  parser.add_argument('component_name', help='The name of the component to manage')
+  parser.add_argument('-m', dest='monitor', action='store_true', help='If specified and the action is "start" or "update", gantry will remain running to monitor components, auto restarting them as necessary')
+
   args = parser.parse_args()
   component_name = args.component_name
   action = args.action
   should_monitor = args.monitor
   config_file = args.config_file
-  
+
   # Load the config.
   config = loadConfig(config_file)
   if not config:
     return
-  
+
   # Create the manager.
   manager = RuntimeManager(config)
-  
+
   # Find the component
   component = manager.getComponent(component_name)
   if not component:
@@ -94,6 +94,6 @@ def run():
 
   # We may have to call cleanup manually if we weren't asked to monitor
   cleanup_monitor(None, None)
-  
+
 if __name__ == "__main__":
   run()
