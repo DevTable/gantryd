@@ -3,3 +3,4 @@ docker-py
 psutil
 jinja2
 python-etcd
+peewee

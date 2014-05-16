@@ -82,21 +82,23 @@ The configuration defines the various components of the project you want to mana
 }
 ```
 
-| Field                 | Description                                                                       | Default    |
-| --------------------- | --------------------------------------------------------------------------------- | ---------- |
-| name                  | The name of the component                                                         |            |
-| repo                  | The docker to use for the component's image                                       |            |
-| tag                   | The tag of the docker image to use                                                | latest     |
-| user                  | The user under which to run the command in the container                          | (in image) |
-| command               | The command to run inside the container                                           | (in image) |
-| ports                 | Mappings of container ports to external ports                                     |            |
-| readyChecks           | The various checks to run to ensure the container is ready (see below for list)   |            |
-| healthChecks          | The various checks to run to ensure the container is healthy (see below for list) |            |
-| bindings              | Mapping between external hosts paths and the corresponding container volumes      |            |
-| defineComponentLinks  | Defines the component links exported by this component                            |            |
-| requireComponentLinks | Defines the component links imported/required by this component                   |            |
-| readyTimeout          | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000     |
-
+| Field                 | Description                                                                       | Default     |
+| --------------------- | --------------------------------------------------------------------------------- | ----------- |
+| name                  | The name of the component                                                         |             |
+| repo                  | The docker to use for the component's image                                       |             |
+| tag                   | The tag of the docker image to use                                                | latest      |
+| user                  | The user under which to run the command in the container                          | (in image)  |
+| command               | The command to run inside the container                                           | (in image)  |
+| ports                 | Mappings of container ports to external ports                                     |             |
+| readyChecks           | The various checks to run to ensure the container is ready (see below for list)   |             |
+| healthChecks          | The various checks to run to ensure the container is healthy (see below for list) |             |
+| terminationSignals    | Signals which should be sent to a specific container when it should be shut down  |             |
+| terminationChecks     | The various checks to run to ensure that the container is ready to shut down      | connections |
+| bindings              | Mapping between external hosts paths and the corresponding container volumes      |             |
+| defineComponentLinks  | Defines the component links exported by this component                            |             |
+| requireComponentLinks | Defines the component links imported/required by this component                   |             |
+| readyTimeout          | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000      |
+| privileged            | Whehther the container should run in privileged mode                              | False       |
 
 ### Terminology
 

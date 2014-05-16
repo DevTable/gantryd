@@ -85,6 +85,7 @@ class Component(object):
     
     # Get the list of currently running container(s).
     existing_containers = self.getAllContainers(client)
+    existing_primary = self.getPrimaryContainer()
     
     # Start the new instance.
     container = self.start()
@@ -99,9 +100,14 @@ class Component(object):
     # container.
     report('Redirecting traffic to new container', component = self)
     self.manager.adjustForUpdatingComponent(self, container)
+
+    # Signal the existing primary container to terminate
+    if existing_primary is not None:
+      self.manager.terminateContainer(existing_primary, self)
+
     return True
     
-  def stop(self, kill = False):
+  def stop(self, kill=False):
     """ Stops all containers for this component. """
     if not self.isRunning():
       return
@@ -110,14 +116,15 @@ class Component(object):
     client = getDockerClient()
 
     # Mark all the containers as draining.
-    report('Draining all containers...', component = self)
+    report('Draining all containers...', component=self)
     for container in self.getAllContainers(client):
       setContainerStatus(container, 'draining')
+      self.manager.terminateContainer(container, self)
     
     # Kill any associated containers if asked.
     if kill:
       for container in self.getAllContainers(client):
-        report('Killing container ' + container['Id'][0:12], component = self)
+        report('Killing container ' + container['Id'][:12], component = self)
         client.kill(container)
         removeContainerMetadata(container)
    
@@ -152,7 +159,7 @@ class Component(object):
       report('Running health check: ' + config.getTitle(), component = self)
       result = check.run(container, report)
       if not result:
-        self.logger.debug('Health check %s failed for component %s', check.getTitle(), self.getName())
+        report('Health check failed', component=self)
         return False
         
     self.logger.debug('Component %s is healthy', self.getName())    
@@ -208,8 +215,12 @@ class Component(object):
     
     # Start the instance with the proper image ID.
     container = self.createContainer(client)
-    report('Starting container ' + container['Id'], component = self)
-    client.start(container, binds=self.config.getBindings())
+    report('Starting container ' + container['Id'][:12], component=self)
+
+    if self.config.privileged:
+      report('Container will be run in privileged mode', component=self)
+
+    client.start(container, binds=self.config.getBindings(), privileged=self.config.privileged)
     
     # Health check until the instance is ready.    
     report('Waiting for health checks...', component = self)

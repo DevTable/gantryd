@@ -19,6 +19,25 @@ class _HealthCheck(CFObject):
       return self.id
     
     return self.kind
+
+
+class _TerminationSignal(CFObject):
+  """ A single signal is sent to a component when the component should shut
+      itself down.
+  """
+  kind = CFField('kind')
+  id = CFField('id').default('')
+  timeout = CFField('timeout').kind(int).default(3)
+
+  def __init__(self):
+    super(_TerminationSignal, self).__init__('Termination Signal')
+    
+  def getTitle(self):
+    """ Returns a descriptive title for the check. """
+    if self.id != '':
+      return self.id
+    
+    return self.kind
     
     
 class _PortMapping(CFObject):
@@ -76,14 +95,19 @@ class _Component(CFObject):
   tag = CFField('tag').default('latest')
   command = CFField('command').list_of(str).default([])
   user = CFField('user').default('')
-  ports = CFField('ports').list_of(_PortMapping)
-  bindings = CFField('bindings').list_of(_VolumeBinding)
+  ports = CFField('ports').list_of(_PortMapping).default([])
+  bindings = CFField('bindings').list_of(_VolumeBinding).default([])
   ready_checks = CFField('readyChecks').list_of(_HealthCheck).default([])
   health_checks = CFField('healthChecks').list_of(_HealthCheck).default([])
   ready_timeout = CFField('readyTimeout').kind(int).default(10000)
+  termination_signals = CFField('terminationSignals').list_of(_TerminationSignal).default([])
+  privileged = CFField('privileged').kind(bool).default(False)
   defined_component_links = CFField('defineComponentLinks').list_of(_DefinedComponentLink).default([])
   required_component_links = CFField('requireComponentLinks').list_of(_RequiredComponentLink).default([])
     
+  connection_check = _HealthCheck().build({'kind': 'connection'})
+  termination_checks = CFField('terminationChecks').list_of(_HealthCheck).default([connection_check])
+
   def __init__(self):
     super(_Component, self).__init__('Component')
 

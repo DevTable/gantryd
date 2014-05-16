@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 
 import argparse
+import signal
+import time
+
 from actions import start_action, update_action, list_action, stop_action, kill_action
 from config.GantryConfig import Configuration
 from runtime.manager import RuntimeManager
 from util import report, fail
 
-import time
 
 ACTIONS = {
   'start': start_action,
@@ -78,8 +80,20 @@ def run():
   # Run the action with the component and config.
   result = ACTIONS[action](component)
   if result and should_monitor:
-    report('Starting monitoring of component: ' + component_name)
-    monitor(component)
+    try:
+      report('Starting monitoring of component: ' + component_name)
+      monitor(component)
+    except KeyboardInterrupt:
+      report('Terminating monitoring of component: ' + component_name)
+
+  def cleanup_monitor(signum, frame):
+    manager.join()
+
+  # Set the signal handler and a 5-second alarm
+  signal.signal(signal.SIGINT, cleanup_monitor)
+
+  # We may have to call cleanup manually if we weren't asked to monitor
+  cleanup_monitor(None, None)
   
 if __name__ == "__main__":
   run()

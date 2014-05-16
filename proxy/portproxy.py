@@ -14,11 +14,12 @@ HAPROXY_CONFIG_FILE = 'haproxy.conf'
 
 CLOSE_WAIT = 'CLOSE_WAIT'
 
+
+logger = logging.getLogger(__name__)
+
+
 class Proxy(object):
   def __init__(self):
-    # Logging.
-    self.logger = logging.getLogger(__name__)
-
     # The registered routes, by external port number.
     self._port_routes = {}
 
@@ -29,9 +30,10 @@ class Proxy(object):
     env = Environment(**jinja_options)
     self._template = env.get_template(HAPROXY_TEMPLATE)
 
-  def get_connections(self):
+  @staticmethod
+  def get_connections():
     """ Returns the connection information for all proxy processes. """
-    self.logger.debug('Getting proxy connections')
+    logger.debug('Getting proxy connections')
     connections = []
     for proc in psutil.process_iter():
       if proc.is_running() and proc.name() == HAPROXY:
@@ -53,7 +55,7 @@ class Proxy(object):
 
   def commit(self):
     """ Commits the changes made to the proxy. """
-    self.logger.debug("Restarting haproxy with new rules.")
+    logger.debug("Restarting haproxy with new rules.")
 
     # If the port routes are empty, add a dummy mapping to the proxy.
     if len(self._port_routes.values()) == 0:

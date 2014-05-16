@@ -3,6 +3,7 @@ import urllib2
 
 from health.healthcheck import HealthCheck
 from util import ReportLevels
+from proxy.portproxy import Proxy
 
 class TcpCheck(HealthCheck):
   """ A health check which tries to connect to a port via TCP. """
@@ -51,4 +52,28 @@ class HttpRequestCheck(HealthCheck):
       self.logger.exception(exc)
       return False
       
+    return True
+
+
+class IncomingConnectionCheck(HealthCheck):
+  """ A health check which will succeed only if there are NO incoming connections to a container.
+  """
+  def __init__(self, config):
+    super(IncomingConnectionCheck, self).__init__()
+    self.config = config
+
+  def run(self, container, report):
+    container_ip = self.getContainerIPAddress(container)
+
+    for connection in Proxy.get_connections():
+      if not connection.laddr or not connection.raddr:
+        continue
+
+      if connection.raddr[0] == container_ip:
+        report('Container still has existing connections: %s' % container['Id'][0:12],
+               level=ReportLevels.EXTRA)
+        return False
+
+    report('Container has no remaining connections: %s' % container['Id'][0:12],
+           level=ReportLevels.EXTRA)
     return True
