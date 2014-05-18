@@ -141,9 +141,12 @@ class _Component(CFObject):
     """ Returns the volumes exposed by this component. """
     return [binding.volume for binding in self.bindings]
 
-  def getBindings(self):
+  def getBindings(self, container_id):
     """ Returns the volumes exposed by this component. """
-    return {binding.external: binding.volume for binding in self.bindings}
+    def substitute_id(external_dir):
+      return external_dir.format(container_id=container_id[:12])
+
+    return {substitute_id(binding.external): binding.volume for binding in self.bindings}
 
   def getDefinedComponentLinks(self):
     """ Returns the dict of defined components links. """
