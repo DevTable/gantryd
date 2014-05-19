@@ -83,19 +83,19 @@ def setContainerStatus(container, status):
 
 
 @db_access
-def getContainerComponent(container_id):
+def getContainerComponent(container):
   """ Returns the component that owns the given container. """
-  container = _upsertContainerRecord(container_id)
-  return container.component and container.component.name
+  container_record = _upsertContainerRecord(container)
+  return container_record.component and container_record.component.name
 
 
 @db_access
-def setContainerComponent(container_id, component_name):
+def setContainerComponent(container, component_name):
   """ Sets the component code for the given container. """
   component = _upsertComponentRecord(component_name)
-  container = _upsertContainerRecord(container_id)
-  container.component = component
-  container.save()
+  container_record = _upsertContainerRecord(container)
+  container_record.component = component
+  container_record.save()
 
 
 def _getContainerId(container_or_id):
@@ -104,8 +104,7 @@ def _getContainerId(container_or_id):
 
 @db_access
 def removeContainerMetadata(container):
-  container_id = _getContainerId(container)
-  found = _upsertContainerRecord(container_id)
+  found = _upsertContainerRecord(container)
   found.delete_instance(recursive=True)
 
 
@@ -121,13 +120,14 @@ def _getContainerFieldRecord(container, field):
 
 
 def _upsertContainerRecord(container):
+  container_id = _getContainerId(container)
   try:
     return (Container
       .select()
-      .where(Container.docker_id == container)
+      .where(Container.docker_id == container_id)
       .get())
   except Container.DoesNotExist:
-    return Container.create(docker_id=container)
+    return Container.create(docker_id=container_id)
 
 
 @db_access
