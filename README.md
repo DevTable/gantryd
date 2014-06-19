@@ -76,6 +76,9 @@ The configuration defines the various components of the project you want to mana
        ],
        "requireComponentLinks": [
          { "name": "anotherserver", "alias": "serveralias" }
+       ],
+       "environmentVariables": [
+         { "name": "FOO", "value": "somevalue" }
        ]
     }
   ]
@@ -98,6 +101,7 @@ The configuration defines the various components of the project you want to mana
 | defineComponentLinks  | Defines the component links exported by this component                            |             |
 | requireComponentLinks | Defines the component links imported/required by this component                   |             |
 | readyTimeout          | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000      |
+| environmentVariables  | Environments variables to set when running the component's containers             |             |
 | privileged            | Whehther the container should run in privileged mode                              | False       |
 
 ### Terminology

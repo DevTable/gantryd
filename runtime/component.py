@@ -254,7 +254,7 @@ class Component(object):
   def calculateEnvForComponent(self):
     """ Calculates the dict of environment variables for this component. """
     links = self.config.getComponentLinks()
-    environment = {}
+    environment = self.config.getEnvironmentVariables()
 
     for link_alias, link_name in links.items():
       component_link_info = self.manager.lookupComponentLink(link_name)

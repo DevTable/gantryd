@@ -88,6 +88,15 @@ class _RequiredComponentLink(CFObject):
     super(_RequiredComponentLink, self).__init__('Required Component Link')
 
 
+class _EnvironmentVariable(CFObject):
+  """ An environment variable to set when running a component. """
+  name = CFField('name')
+  value = CFField('value')
+
+  def __init__(self):
+    super(_EnvironmentVariable, self).__init__('Environment Variable')
+
+
 class _Component(CFObject):
   """ A single gantry component. """
   name = CFField('name')
@@ -104,6 +113,7 @@ class _Component(CFObject):
   privileged = CFField('privileged').kind(bool).default(False)
   defined_component_links = CFField('defineComponentLinks').list_of(_DefinedComponentLink).default([])
   required_component_links = CFField('requireComponentLinks').list_of(_RequiredComponentLink).default([])
+  environment_variables = CFField('environmentVariables').list_of(_EnvironmentVariable).default([])
 
   connection_check = _HealthCheck().build({'kind': 'connection'})
   termination_checks = CFField('terminationChecks').list_of(_HealthCheck).default([connection_check])
@@ -155,6 +165,10 @@ class _Component(CFObject):
   def getComponentLinks(self):
     """ Returns a dict of aliases for component links required, with the values being the links' names. """
     return {l.alias: l.name for l in self.required_component_links}
+    
+  def getEnvironmentVariables(self):
+    """ Returns a dict of the defined environments variables and their values. """
+    return {v.name: v.value for v in self.environment_variables}
 
 
 class Configuration(CFObject):
