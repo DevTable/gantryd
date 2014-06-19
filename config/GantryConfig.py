@@ -6,8 +6,8 @@ class _HealthCheck(CFObject):
   """ A single check to perform to verify that a component is ready to be
       pushed or is running properly.
   """
-  kind = CFField('kind')
-  id = CFField('id').default('')
+  id = CFField('id').default('').name_field()
+  kind = CFField('kind').value_field()
   timeout = CFField('timeout').kind(int).default(3)
 
   def __init__(self):
@@ -25,8 +25,8 @@ class _TerminationSignal(CFObject):
   """ A single signal that is sent to a component when the component should shut
       itself down.
   """
-  kind = CFField('kind')
-  id = CFField('id').default('')
+  id = CFField('id').default('').name_field()
+  kind = CFField('kind').value_field()
   timeout = CFField('timeout').kind(int).default(3)
 
   def __init__(self):
@@ -42,8 +42,8 @@ class _TerminationSignal(CFObject):
 
 class _PortMapping(CFObject):
   """ A port mapping of an internal container port to the outside world. """
-  external = CFField('external').kind(int)
-  container = CFField('container').kind(int)
+  external = CFField('external').kind(int).name_field()
+  container = CFField('container').kind(int).value_field()
   kind = CFField('kind').default('tcp')
 
   def __init__(self):
@@ -52,8 +52,8 @@ class _PortMapping(CFObject):
 
 class _VolumeBinding(CFObject):
   """ A port mapping of an internal container port to the outside world. """
-  external = CFField('external')
-  volume = CFField('volume')
+  external = CFField('external').name_field()
+  volume = CFField('volume').value_field()
 
   def __init__(self):
     super(_VolumeBinding, self).__init__('Volume Binding')
@@ -61,8 +61,8 @@ class _VolumeBinding(CFObject):
 
 class _DefinedComponentLink(CFObject):
   """ A network link exported by a component. """
-  port = CFField('port').kind(int)
-  name = CFField('name')
+  name = CFField('name').name_field()
+  port = CFField('port').kind(int).value_field()
   kind = CFField('kind').default('tcp')
 
   def __init__(self):
@@ -81,8 +81,8 @@ class _DefinedComponentLink(CFObject):
 
 class _RequiredComponentLink(CFObject):
   """ A network link required by a component. """
-  name = CFField('name')
-  alias = CFField('alias')
+  name = CFField('name').name_field()
+  alias = CFField('alias').value_field()
 
   def __init__(self):
     super(_RequiredComponentLink, self).__init__('Required Component Link')
@@ -90,8 +90,8 @@ class _RequiredComponentLink(CFObject):
 
 class _EnvironmentVariable(CFObject):
   """ An environment variable to set when running a component. """
-  name = CFField('name')
-  value = CFField('value')
+  name = CFField('name').name_field()
+  value = CFField('value').value_field()
 
   def __init__(self):
     super(_EnvironmentVariable, self).__init__('Environment Variable')

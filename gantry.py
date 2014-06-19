@@ -57,12 +57,14 @@ def run():
   parser.add_argument('action', help='The action to perform', choices=ACTIONS.keys())
   parser.add_argument('component_name', help='The name of the component to manage')
   parser.add_argument('-m', dest='monitor', action='store_true', help='If specified and the action is "start" or "update", gantry will remain running to monitor components, auto restarting them as necessary')
+  parser.add_argument('--setconfig', dest='config_overrides', action='append', help='Configuration overrides for the component')
 
   args = parser.parse_args()
   component_name = args.component_name
   action = args.action
   should_monitor = args.monitor
   config_file = args.config_file
+  config_overrides = args.config_overrides
 
   # Load the config.
   config = loadConfig(config_file)
@@ -76,6 +78,10 @@ def run():
   component = manager.getComponent(component_name)
   if not component:
     raise Exception('Unknown component: ' + component_name)
+    
+  # Apply the config overrides (if any).
+  if config_overrides:
+    component.applyConfigOverrides(config_overrides)
 
   # Run the action with the component and config.
   result = ACTIONS[action](component)

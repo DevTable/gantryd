@@ -21,7 +21,15 @@ class Component(object):
 
     # The underlying config for the component.
     self.config = config
-
+    
+  def applyConfigOverrides(self, config_overrides):
+    """ Applies the list of configuration overrides to this component's config.
+    
+        Format: ['Name=Value', 'Name.SubName=Value']
+    """
+    for override in config_overrides:
+      self.config.applyOverride(override)
+    
   def getName(self):
     """ Returns the name of the component. """
     return self.config.name
@@ -298,6 +306,7 @@ class Component(object):
 
     self.logger.debug('Starting container for component %s with command %s', self.getName(),
                       command)
+                      
     container = client.create_container(self.config.getFullImage(), command,
                                         user=self.config.getUser(),
                                         volumes=self.config.getVolumes(),
