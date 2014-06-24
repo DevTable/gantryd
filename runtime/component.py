@@ -324,7 +324,7 @@ class Component(object):
     client = getDockerClient()
     named_image = self.config.getFullImage()
     result = client.inspect_image(named_image)
-    container_cfg = result['config']
+    container_cfg = result['Config']
     if not 'Cmd' in container_cfg:
       return None
 
