@@ -66,7 +66,7 @@ class Component(object):
     named_image = self.config.getFullImage()
     self.logger.debug('Finding image ID for component %s with named image %s', self.getName(), named_image)
     result = client.inspect_image(named_image)
-    return result['id']
+    return result['Id']
 
   def pullRepo(self):
     """ Attempts to pull the repo for this component. On failure, returns False. """
