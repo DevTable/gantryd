@@ -74,6 +74,7 @@ class Component(object):
       self.logger.debug('Attempting to pull repo for component %s: %s:%s', self.getName(), self.config.repo, self.config.tag)
       client = getDockerClient()
       client.pull(self.config.repo, tag=self.config.tag)
+      return True
     except Exception as e:
       self.logger.exception(e)
       return False
