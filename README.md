@@ -40,10 +40,10 @@ git clone https://github.com/DevTable/gantryd.git
 
 ```sh
 # Install apt-get dependencies.
-cat requirements.system | xargs sudo apt-get install
+cat requirements.system | xargs sudo apt-get install -y
 
 # Install python dependencies.
-pip install -r requirements.txt
+sudo pip install -r requirements.txt
 ```
 
 ### Setting up
@@ -88,7 +88,7 @@ The configuration defines the various components of the project you want to mana
 | Field                 | Description                                                                       | Default     |
 | --------------------- | --------------------------------------------------------------------------------- | ----------- |
 | name                  | The name of the component                                                         |             |
-| repo                  | The docker to use for the component's image                                       |             |
+| repo                  | The docker image to use for the component                                         |             |
 | tag                   | The tag of the docker image to use                                                | latest      |
 | user                  | The user under which to run the command in the container                          | (in image)  |
 | command               | The command to run inside the container                                           | (in image)  |
@@ -96,13 +96,13 @@ The configuration defines the various components of the project you want to mana
 | readyChecks           | The various checks to run to ensure the container is ready (see below for list)   |             |
 | healthChecks          | The various checks to run to ensure the container is healthy (see below for list) |             |
 | terminationSignals    | Signals which should be sent to a specific container when it should be shut down  |             |
-| terminationChecks     | The various checks to run to ensure that the container is ready to shut down      | connections |
+| terminationChecks     | The various checks to run to ensure that the container is ready to be shut down   | connections |
 | bindings              | Mapping between external hosts paths and the corresponding container volumes      |             |
 | defineComponentLinks  | Defines the component links exported by this component                            |             |
 | requireComponentLinks | Defines the component links imported/required by this component                   |             |
 | readyTimeout          | Timeout in milliseconds that we will wait for a container to pass a ready check   | 10,000      |
-| environmentVariables  | Environments variables to set when running the component's containers             |             |
-| privileged            | Whehther the container should run in privileged mode                              | False       |
+| environmentVariables  | Environment variables to set when running the component's containers              |             |
+| privileged            | Whether the container should run in privileged mode                               | False       |
 
 ### Terminology
 
@@ -126,6 +126,11 @@ added into the containers for that component:
 
 
 ### Setting up a project
+
+- [Gantryd commands](#gantryd-commands) - distributed management
+- [Gantry commands](#gantry-commands) - local management
+
+### <a name="gantryd"></a>Gantryd commands
 
 #### Creating/updating the project's configuration
 
@@ -168,9 +173,6 @@ sudo ./gantryd.py run myprojectname -c firstcomponent secondcomponent
 ```
 
 This command will start a daemon (and block), starting the components and monitoring them, until it is shutdown.
-
-
-### Gantryd commands
 
 #### Updating a component across all listening machines
 
@@ -255,11 +257,11 @@ Note that "path" is **optional**.
 Attempts to connect to the given port via TCP. Fails if the connection cannot be established.
 
 
-## gantry
+###<a name="gantry"></a>Gantry commands
 
-**gantry** is the **local** version of gantry, intended for starting, stopping and updating of components on a **single** machine.
+**gantry** is the **local** version of gantry, intended for starting, stopping and updating of components on a **single** machine. Please note that you don't need etcd to be installed (or running) to use **gantry**.
 
-### Listing all containers running on a local machine for a component
+#### Listing all containers running on a local machine for a component
 ```sh
 sudo ./gantry.py myconfigfile list firstcomponent
 ```
@@ -272,7 +274,7 @@ CONTAINER ID         UPTIME               IMAGE ID             STATUS
 87b14f60b220         Up 4 minutes         26c8cb358b9d         draining
 ```
 
-### Performing a *local* update of a component
+#### Performing a *local* update of a component
 
 *Note*: This will occur outside of the gantryd event loop, so this should *only* be used for **single machine** or **canary** images.
 
@@ -295,7 +297,7 @@ Monitor check started
 
 *Note*: If the `-m` flag is specified, then gantry will remain running and actively monitor the component's container, restarting it automatically if it becomes unhealthy.
 
-### Stopping all containers running on a local machine for a component
+#### Stopping all containers running on a local machine for a component
 
 *Note*: This will *drain* containers in a safe way, so the process will block until all containers are free from incoming connections
 
@@ -314,7 +316,7 @@ Shutting down container: 39d59e26ee64
 Proxy updated
 ```
 
-### Killing all containers running on a local machine for a component
+#### Killing all containers running on a local machine for a component
 ```sh
 sudo ./gantry.py myconfigfile kill firstcomponent
 ```
