@@ -3,7 +3,7 @@ import threading
 import json
 import logging
 
-from gantryd.componentstate import ComponentState, STOPPED_STATUS, KILLED_STATUS, READY_STATUS
+from gantryd.componentstate import ComponentState, STOPPED_STATUS, KILLED_STATUS, READY_STATUS, PULL_FAIL
 from util import report, fail, getDockerClient, ReportLevels
 
 CHECK_SLEEP_TIME = 30 # 30 seconds
@@ -74,7 +74,7 @@ class ComponentWatcher(object):
           # Ensure that the component is still ready.
           state = self.state.getState()
           current_status = ComponentState.getStatusOf(state)
-          if current_status == READY_STATUS:
+          if current_status == READY_STATUS or current_status == PULL_FAIL:
             report('Component ' + self.component.getName() + ' is not healthy. Restarting...',
                    project=self.project_name, component=self.component)
 

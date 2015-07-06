@@ -5,6 +5,7 @@ from etcdpaths import getComponentStatePath
 READY_STATUS = 'ready'
 STOPPED_STATUS = 'stopped'
 KILLED_STATUS = 'killed'
+PULL_FAIL = 'pullfail'
 
 IMAGE_ID = 'imageid'
 
