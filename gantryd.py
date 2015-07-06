@@ -73,9 +73,12 @@ def start():
 
   # Parse the arguments.
   args = parser.parse_args()
+  port = ETCD_PORT
+  if args.etcd_port:
+    port = int(args.etcd_port)
 
   # Initialize the gantryd client.
-  dclient = GantryDClient(args.etcd_host or ETCD_HOST, args.project, int(args.etcd_port) or ETCD_PORT)
+  dclient = GantryDClient(args.etcd_host or ETCD_HOST, args.project, port)
 
   # Run the action.
   action = ACTIONS[args.action]
