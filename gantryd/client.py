@@ -22,7 +22,7 @@ REPORT_TTL = 60 # Report that this machine is running, every 60 seconds
 
 class GantryDClient(object):
   """ A client in gantryd. """
-  def __init__(self, etcdHost, projectName):
+  def __init__(self, etcdHost, projectName, etcdPort):
     self.project_name = projectName
     self.runtime_manager = None
     self.components = []
@@ -35,7 +35,7 @@ class GantryDClient(object):
     self.logger = logging.getLogger(__name__)
 
     # Initialize the etcd client that we'll use.
-    self.etcd_client = etcd.Client(host=etcdHost)
+    self.etcd_client = etcd.Client(host=etcdHost, port=etcdPort)
 
     # Initialize the thread used for reporting the status of this machine to etcd.
     self.reporting_thread = threading.Thread(target=self.reportMachineStatus, args=[])
