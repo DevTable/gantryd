@@ -335,9 +335,14 @@ class Component(object):
     """ Ensures that the image for this component is present locally. If not,
         we attempt to pull the image.
     """
-    images = client.images(name=self.config.getFullImage())
-    if not images or not len(images) > 0:
-      try:
-        client.pull(self.config.repo)
-      except Exception as e:
-        fail('Could not pull repo ' + self.config.repo, component=self, exception=str(e))
+    images = client.images(name=self.config.repo)
+    if images and len(images) > 0:
+      for image in images:
+        if 'RepoTags' in image.keys():
+          for repotag in image['RepoTags']:
+            if repotag == self.config.getFullImage():
+              return
+    try:
+      client.pull(self.config.repo, tag=self.config.tag)
+    except Exception as e:
+      fail('Could not pull repo ' + self.config.repo, component=self, exception=str(e))
