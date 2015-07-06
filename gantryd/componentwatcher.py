@@ -74,7 +74,7 @@ class ComponentWatcher(object):
           # Ensure that the component is still ready.
           state = self.state.getState()
           current_status = ComponentState.getStatusOf(state)
-          if current_status == READY_STATUS or current_status == PULL_FAIL:
+          if current_status == READY_STATUS:
             report('Component ' + self.component.getName() + ' is not healthy. Restarting...',
                    project=self.project_name, component=self.component)
 
@@ -118,7 +118,7 @@ class ComponentWatcher(object):
       return self.handleStopped(was_initial_check)
     elif current_status == KILLED_STATUS:
       return self.handleKilled(was_initial_check)
-    elif current_status == READY_STATUS:
+    elif current_status == READY_STATUS or current_status = PULL_FAIL:
       with self.update_lock:
         return self.handleReady(state, was_initial_check)
 
