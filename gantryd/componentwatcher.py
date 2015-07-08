@@ -118,7 +118,7 @@ class ComponentWatcher(object):
       return self.handleStopped(was_initial_check)
     elif current_status == KILLED_STATUS:
       return self.handleKilled(was_initial_check)
-    elif current_status == READY_STATUS or current_status = PULL_FAIL:
+    elif current_status == READY_STATUS or current_status == PULL_FAIL:
       with self.update_lock:
         return self.handleReady(state, was_initial_check)
 
