@@ -336,12 +336,10 @@ class Component(object):
         we attempt to pull the image.
     """
     images = client.images(name=self.config.repo)
-    if images and len(images) > 0:
+    if images:
       for image in images:
-        if 'RepoTags' in image.keys():
-          for repotag in image['RepoTags']:
-            if repotag == self.config.getFullImage():
-              return
+        if 'RepoTags' in image.keys() and self.config.getFullImage() in image['RepoTags']:
+          return
     try:
       client.pull(self.config.repo, tag=self.config.tag)
     except Exception as e:
