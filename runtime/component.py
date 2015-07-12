@@ -340,6 +340,7 @@ class Component(object):
       for image in images:
         if 'RepoTags' in image.keys() and self.config.getFullImage() in image['RepoTags']:
           return
+
     try:
       client.pull(self.config.repo, tag=self.config.tag)
     except Exception as e:

@@ -73,9 +73,7 @@ def start():
 
   # Parse the arguments.
   args = parser.parse_args()
-  port = ETCD_PORT
-  if args.etcd_port:
-    port = int(args.etcd_port)
+  port = int(args.etcd_port) if args.etcd_port else ETCD_PORT
 
   # Initialize the gantryd client.
   dclient = GantryDClient(args.etcd_host or ETCD_HOST, args.project, port)
