@@ -3,7 +3,7 @@ import threading
 import json
 import logging
 
-from gantryd.componentstate import ComponentState, STOPPED_STATUS, KILLED_STATUS, READY_STATUS
+from gantryd.componentstate import ComponentState, STOPPED_STATUS, KILLED_STATUS, READY_STATUS, PULL_FAIL
 from util import report, fail, getDockerClient, ReportLevels
 
 CHECK_SLEEP_TIME = 30 # 30 seconds
@@ -118,7 +118,7 @@ class ComponentWatcher(object):
       return self.handleStopped(was_initial_check)
     elif current_status == KILLED_STATUS:
       return self.handleKilled(was_initial_check)
-    elif current_status == READY_STATUS:
+    elif current_status == READY_STATUS or current_status == PULL_FAIL:
       with self.update_lock:
         return self.handleReady(state, was_initial_check)
 
