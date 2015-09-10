@@ -224,6 +224,7 @@ class Component(object):
       report('Container will be run in privileged mode', component=self)
 
     client.start(container, binds=self.config.getBindings(container['Id']),
+                 volumes_from=self.config.volumes_from,
                  privileged=self.config.privileged)
 
     # Health check until the instance is ready.
