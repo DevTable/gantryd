@@ -11,7 +11,7 @@ def enum(*sequential, **named):
 
 ReportLevels = enum(BACKGROUND=-2, EXTRA=-1, NORMAL=0, IMPORTANT=1)
 
-client = docker.Client()
+client = docker.Client(version='auto')
 
 def pickUnusedPort():
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
