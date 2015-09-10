@@ -1,6 +1,6 @@
 termcolor
 docker-py
-psutil
+psutil >=2.2.1,<3.0
 jinja2
 python-etcd
 peewee
