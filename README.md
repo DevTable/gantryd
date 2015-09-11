@@ -68,6 +68,9 @@ The configuration defines the various components of the project you want to mana
        "healthChecks": [
          { "kind": "http", "port": 8888, "path": "/some/path" }
        ],
+       "volumesFrom": [
+         "somedatacontainer"
+       ],
        "bindings": [
          { "external": "/an/external/path", "volume": "/some/container/path"}
        ],
@@ -97,6 +100,7 @@ The configuration defines the various components of the project you want to mana
 | healthChecks          | The various checks to run to ensure the container is healthy (see below for list) |             |
 | terminationSignals    | Signals which should be sent to a specific container when it should be shut down  |             |
 | terminationChecks     | The various checks to run to ensure that the container is ready to be shut down   | connections |
+| volumesFrom           | Container(s), by name, whose volume(s) should be mounted into the container       |             |
 | bindings              | Mapping between external hosts paths and the corresponding container volumes      |             |
 | defineComponentLinks  | Defines the component links exported by this component                            |             |
 | requireComponentLinks | Defines the component links imported/required by this component                   |             |
