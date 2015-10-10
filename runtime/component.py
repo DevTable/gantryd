@@ -255,8 +255,9 @@ class Component(object):
     """ Returns all the matching containers for this component. """
     containers = []
     for container in client.containers():
-      if (container['Image'] == self.config.getFullImage() or
-          getContainerComponent(container) == self.getName()):
+      containerName = getContainerComponent(container)
+      if ((not containerName and container['Image'] == self.config.getFullImage()) or
+          containerName == self.getName()):
         containers.append(container)
 
     return containers
