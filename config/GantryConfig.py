@@ -28,6 +28,7 @@ class _TerminationSignal(CFObject):
   id = CFField('id').default('').name_field()
   kind = CFField('kind').value_field()
   timeout = CFField('timeout').kind(int).default(3)
+  command = CFField('command').default('')
 
   def __init__(self):
     super(_TerminationSignal, self).__init__('Termination Signal')

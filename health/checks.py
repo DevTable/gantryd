@@ -1,7 +1,7 @@
 from functools import partial
 
 from networkcheck import TcpCheck, HttpRequestCheck, IncomingConnectionCheck
-from termination import HttpTerminationSignal
+from termination import HttpTerminationSignal, ExecTerminationSignal
 from util import report, fail, getDockerClient
 
 # The list of registered health checks
@@ -23,6 +23,7 @@ def buildHealthCheck(check_config):
 TERMINATION_SIGNALS = {
   'http': partial(HttpTerminationSignal, 'http'),
   'https': partial(HttpTerminationSignal, 'https'),
+  'exec': ExecTerminationSignal
 }
 
 def buildTerminationSignal(check_config):
