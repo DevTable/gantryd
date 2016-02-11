@@ -23,7 +23,7 @@ def buildHealthCheck(check_config):
 TERMINATION_SIGNALS = {
   'http': partial(HttpTerminationSignal, 'http'),
   'https': partial(HttpTerminationSignal, 'https'),
-  'exec': ExecTerminationSignal
+  'exec': ExecTerminationSignal,
 }
 
 def buildTerminationSignal(check_config):

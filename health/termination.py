@@ -39,12 +39,12 @@ class ExecTerminationSignal(TerminationSignal):
     self.config = config
 
   def run(self, container, report):
-    report('ExecTerminationSignal in container ' + container['Id'][0:12] ,
+    report('ExecTerminationSignal in container %s: %s' % (container['Id'][0:12], self.config.exec_command),
            level=ReportLevels.EXTRA)
-    report('Exec: ' + self.config.command)
+
     try:
       client = getDockerClient()
-      response = client.exec_create(container, self.config.command)
+      response = client.exec_create(container, self.config.exec_command)
       client.exec_start(response['Id'])
     except Exception as exc:
       self.logger.exception(exc)
