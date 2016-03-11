@@ -49,7 +49,7 @@ sudo pip install -r requirements.txt
 
 #### RHEL or Centos
 ```sh
-# Install apt-get dependencies.
+# Install yum dependencies.
 cat requirements.system.rhel | xargs sudo yum install -y
 
 # Install python dependencies.
