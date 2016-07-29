@@ -13,10 +13,11 @@ defaults
     option abortonclose
     option forwardfor
     option httpclose
-    
+
     log global
 {% for port, route in port_routes.items() %}
-frontend port_{{ port }} *:{{ port }}
+frontend port_{{ port }}
+    bind 0.0.0.0:{{ port }}
     timeout client 86400000
     {% if route.is_http -%}
     mode http
