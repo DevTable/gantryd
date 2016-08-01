@@ -38,9 +38,19 @@ git clone https://github.com/DevTable/gantryd.git
 
 ### Installing dependencies
 
+#### Debian or Ubuntu
 ```sh
 # Install apt-get dependencies.
 cat requirements.system | xargs sudo apt-get install -y
+
+# Install python dependencies.
+sudo pip install -r requirements.txt
+```
+
+#### RHEL or Centos
+```sh
+# Install yum dependencies.
+cat requirements.system.rhel | xargs sudo yum install -y
 
 # Install python dependencies.
 sudo pip install -r requirements.txt
